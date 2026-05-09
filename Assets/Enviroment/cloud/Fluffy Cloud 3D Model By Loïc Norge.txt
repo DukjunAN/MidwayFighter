@@ -1,0 +1,6 @@
+Fluffy Cloud 3D Model By Loïc Norgeot team From Sketchfab
+
+D:\GameFactory\MidwayFighter\Assets\Enviroment\cloud
+모델명  cloud.glb
+
+게임내 크기 : 3.0

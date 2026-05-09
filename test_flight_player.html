@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Flight Test: Player Aircraft</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; font-family: monospace; user-select: none; }
+        
+        /* 왼쪽 상단: 모델 선택 메뉴 및 기본 정보 */
+        #top-left-ui {
+            position: absolute; top: 10px; left: 10px; z-index: 100;
+            display: flex; flex-direction: column; gap: 10px;
+        }
+        #stats-ui { color: #0f0; pointer-events: none; text-shadow: 1px 1px 2px #000; font-size: 14px; line-height: 1.4; }
+        .btn-group { display: flex; flex-wrap: wrap; gap: 5px; pointer-events: auto; }
+        button { background: rgba(0, 50, 0, 0.6); color: #0f0; border: 1px solid #0f0; padding: 5px 10px; cursor: pointer; border-radius: 4px; font-size: 12px; }
+        button:hover { background: rgba(0, 100, 0, 0.8); }
+
+        /* 왼쪽 하단: 스로틀 및 총알 발사 버튼 */
+        #bottom-left-ui {
+            position: absolute; bottom: 30px; left: 30px; z-index: 200;
+            display: flex; align-items: flex-end; gap: 20px;
+        }
+
+        /* 수직 스로틀 슬라이더 (250px 원복) */
+        #ui-throttle-container { 
+            width: 40px; height: 250px; 
+            background: rgba(0, 0, 0, 0.4); border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.2); 
+            touch-action: none; pointer-events: auto; position: relative;
+        }
+        #ui-throttle-track { 
+            position: absolute; top: 15px; left: 50%; transform: translateX(-50%); 
+            width: 4px; height: 220px; background: rgba(255, 255, 255, 0.1); 
+        }
+        #ui-throttle-handle { 
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+            width: 50px; height: 24px; background: #eee; border-radius: 4px; 
+            cursor: ns-resize; box-shadow: 0 0 15px rgba(0,0,0,0.5); 
+        }
+
+        /* 총알 발사 버튼 */
+        #ui-fire-btn { 
+            width: 120px; height: 120px; 
+            background: rgba(255, 255, 255, 0.15); border: 3px solid rgba(255, 255, 255, 0.5); 
+            border-radius: 50%; display: flex; align-items: center; 
+            justify-content: center; cursor: pointer; touch-action: none;
+            pointer-events: auto;
+        }
+        #ui-fire-btn:active, #ui-fire-btn.pressing { background: rgba(255, 0, 0, 0.4); transform: scale(0.9); }
+        .bullet-icon { width: 105px; height: 105px; opacity: 0.9; }
+
+        /* 중앙 하단: 계기판 (속도계 & 고도계) */
+        #ui-gauges-container {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 20px; z-index: 200; pointer-events: none;
+        }
+        .ui-gauge { width: 150px; height: 150px; }
+        .gauge-bg { fill: rgba(0, 0, 0, 0.5); stroke: rgba(255, 255, 255, 0.3); stroke-width: 2; }
+        .gauge-tick { stroke: rgba(255, 255, 255, 0.5); stroke-width: 2; }
+        .gauge-needle { stroke: #ff3300; stroke-width: 3; stroke-linecap: round; }
+        .gauge-center { fill: #ff3300; }
+        .gauge-text { fill: #0f0; font-family: monospace; font-size: 10px; text-anchor: middle; font-weight: bold; }
+
+        /* 오른쪽 하단: 가상 조이스틱 */
+        #joystick-area {
+            position: absolute; bottom: 120px; right: 120px; z-index: 200;
+            width: 1px; height: 1px; 
+        }
+        #joystick-base {
+            position: absolute; width: 120px; height: 120px;
+            background: rgba(255, 255, 255, 0.1); border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%; display: none; pointer-events: none; transform: translate(-50%, -50%);
+        }
+        #joystick-stick {
+            position: absolute; width: 50px; height: 50px;
+            background: rgba(255, 255, 255, 0.3); border-radius: 50%;
+            top: 50%; left: 50%; transform: translate(-50%, -50%);
+        }
+
+        #hit-flash { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,0,0,0.4); pointer-events: none; display: none; z-index: 1000; }
+        #hit-flash.active { display: block; }
+    </style>
+</head>
+<body>
+    <!-- 왼쪽 상단 UI -->
+    <div id="top-left-ui">
+        <div id="stats-ui">
+            <div>HP: <span id="val-hp">100</span> | SPEED: <span id="val-speed">0</span> km/h <span id="overheat-text" style="color: #ff0; display: none;">OVERHEAT!</span></div>
+            <div>PITCH: <span id="val-pitch">0</span> | ROLL: <span id="val-roll">0</span></div>
+            <div>POS: <span id="val-pos">0, 0, 0</span></div>
+            <div>INPUT: X:<span id="val-in-x">0</span> Y:<span id="val-in-y">0</span></div>
+        </div>
+        <div class="btn-group">
+            <button id="btn-f4f">F4F Wildcat</button>
+            <button id="btn-tbf">TBF Avenger</button>
+            <button id="btn-hit">Simulate Hit</button>
+            <button id="btn-spawn-drone">Spawn Drone</button>
+        </div>
+    </div>
+
+    <!-- 왼쪽 하단 UI -->
+    <div id="bottom-left-ui">
+        <div id="ui-throttle-container">
+            <div id="ui-throttle-track"></div>
+            <div id="ui-throttle-handle"></div>
+        </div>
+        <div id="ui-fire-btn">
+            <svg class="bullet-icon" viewBox="8 1 20 22">
+                <g fill-opacity="0.5">
+                    <path d="M10,2L8.5,5H11.5L10,2M8.5,6V18H11.5V6H8.5M8.5,19V21A1,1 0 0,0 9.5,22H10.5A1,1 0 0,0 11.5,21V19H8.5Z" fill="white"/>
+                    <path d="M18,2L16.5,5H19.5L18,2M16.5,6V18H19.5V6H16.5M16.5,19V21A1,1 0 0,0 17.5,22H18.5A1,1 0 0,0 19.5,21V19H16.5Z" fill="white"/>
+                    <path d="M26,2L24.5,5H27.5L26,2M24.5,6V18H27.5V6H24.5M24.5,19V21A1,1 0 0,0 25.5,22H26.5A1,1 0 0,0 27.5,21V19H24.5Z" fill="white"/>
+                </g>
+            </svg>
+        </div>
+    </div>
+
+    <!-- 계기판 (속도계 & 고도계) -->
+    <div id="ui-gauges-container">
+        <!-- 속도계 -->
+        <div class="ui-gauge">
+            <svg viewBox="0 0 100 100">
+                <circle class="gauge-bg" cx="50" cy="50" r="48" />
+                <g class="gauge-ticks">
+                    <line class="gauge-tick" x1="50" y1="10" x2="50" y2="15" transform="rotate(-120, 50, 50)" />
+                    <line class="gauge-tick" x1="50" y1="10" x2="50" y2="15" transform="rotate(-80, 50, 50)" />
+                    <line class="gauge-tick" x1="50" y1="10" x2="50" y2="15" transform="rotate(-40, 50, 50)" />
+                    <line class="gauge-tick" x1="50" y1="10" x2="50" y2="15" transform="rotate(0, 50, 50)" />
+                    <line class="gauge-tick" x1="50" y1="10" x2="50" y2="15" transform="rotate(40, 50, 50)" />
+                    <line class="gauge-tick" x1="50" y1="10" x2="50" y2="15" transform="rotate(80, 50, 50)" />
+                    <line class="gauge-tick" x1="50" y1="10" x2="50" y2="15" transform="rotate(120, 50, 50)" />
+                </g>
+                <text class="gauge-text" x="50" y="80">km/h</text>
+                <text id="ui-speed-digital" class="gauge-text" x="50" y="65" style="font-size: 14px; fill: #fff;">0</text>
+                <g id="ui-speed-needle-group" transform="rotate(-120, 50, 50)">
+                    <line class="gauge-needle" x1="50" y1="50" x2="50" y2="12" />
+                    <circle class="gauge-center" cx="50" cy="50" r="4" />
+                </g>
+            </svg>
+        </div>
+        <!-- 고도계 -->
+        <div class="ui-gauge">
+            <svg viewBox="0 0 100 100">
+                <circle class="gauge-bg" cx="50" cy="50" r="48" />
+                <g class="gauge-ticks">
+                    <line class="gauge-tick" x1="50" y1="10" x2="50" y2="15" transform="rotate(-120, 50, 50)" />
+                    <line class="gauge-tick" x1="50" y1="10" x2="50" y2="15" transform="rotate(-80, 50, 50)" />
+                    <line class="gauge-tick" x1="50" y1="10" x2="50" y2="15" transform="rotate(-40, 50, 50)" />
+                    <line class="gauge-tick" x1="50" y1="10" x2="50" y2="15" transform="rotate(0, 50, 50)" />
+                    <line class="gauge-tick" x1="50" y1="10" x2="50" y2="15" transform="rotate(40, 50, 50)" />
+                    <line class="gauge-tick" x1="50" y1="10" x2="50" y2="15" transform="rotate(80, 50, 50)" />
+                    <line class="gauge-tick" x1="50" y1="10" x2="50" y2="15" transform="rotate(120, 50, 50)" />
+                </g>
+                <text class="gauge-text" x="50" y="80">meters</text>
+                <text id="ui-alt-digital" class="gauge-text" x="50" y="65" style="font-size: 14px; fill: #fff;">0</text>
+                <g id="ui-alt-needle-group" transform="rotate(-120, 50, 50)">
+                    <line class="gauge-needle" x1="50" y1="50" x2="50" y2="12" />
+                    <circle class="gauge-center" cx="50" cy="50" r="4" />
+                </g>
+            </svg>
+        </div>
+    </div>
+
+    <!-- 오른쪽 하단 가상 조이스틱 -->
+    <div id="joystick-area">
+        <div id="joystick-base"><div id="joystick-stick"></div></div>
+    </div>
+    
+    <div id="hit-flash"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.9/dat.gui.min.js"></script>
+    <script type="module" src="./test_flight_player.js"></script>
+</body>
+</html>

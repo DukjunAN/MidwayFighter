@@ -1,0 +1,27 @@
+D:\GameFactory\MidwayFighter\Assets\Control UI
+
+joystick 3D Model Created By VivernaNeva From Sketchfab
+
+joystick.glb  
+비행기 조종 스틱
+
+Custom HOTAS Throttle Exterior 3D Model Created By Christian Gerefalk From Sketchfab
+
+custom_hotas_throttle_exterior.glb
+속도조절 쓰로틀
+
+Lever 3D Model Created By Ikoms From Sketchfab
+
+애니메이션을 잘 활용해야 한다. 
+레버중간 : 애니메이션 시간 5초 모형은 레버의 중간을 유지 함
+레버상단 : 5초에서 1초로 애니메이션 하면 중간에서 상단으로 올라감. (상단에서 중간으로 내려올때는 1초에서 5초)
+레버하단 : 5초에서 10초로 애니메이션 하면 중간에서 하단으로 내려감. (하단에서 중간으로 올라갈때는 10초에서 5초)
+
+lever.glb
+속도조절 쓰로틀
+
+Joystick 3D Model Created By aligphade1989 From Sketchfab
+
+이놈이 진짜 비행기 레버 쓰로틀로 쓰기 이미지가 좋음 
+Throttle.glb
+오브젝트 Object_6 의 블랜더에서 X축을 조정하면 앞뒤로 움직임

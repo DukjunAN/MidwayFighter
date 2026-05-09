@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MidwayFighter - Enemy AI Test</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #333333; color: white; }
+        
+        #ui {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            background: rgba(20, 20, 20, 0.9);
+            padding: 12px 20px;
+            border-radius: 12px;
+            border: 1px solid #444;
+            width: auto;
+            min-width: 600px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.5);
+        }
+
+        #ui h2 { margin: 0; font-size: 16px; color: #ff4d4d; border-right: 1px solid #555; padding-right: 15px; white-space: nowrap; }
+        
+        .control-group { margin-bottom: 0; display: flex; align-items: center; gap: 10px; }
+        label { margin-bottom: 0; font-size: 11px; white-space: nowrap; }
+        
+        select {
+            width: 160px;
+            padding: 6px;
+            font-size: 12px;
+        }
+
+        button {
+            width: auto;
+            padding: 8px 15px;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        #unit-description { font-size: 11px; color: #aaa; max-width: 200px; line-height: 1.2; }
+
+        #coords {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-family: 'Consolas', monospace;
+            font-size: 16px;
+            color: #00ff00;
+            text-shadow: 2px 2px 4px black;
+            pointer-events: none;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 8px 12px;
+            border-radius: 6px;
+            border-left: 3px solid #00ff00;
+        }
+
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 40px;
+            height: 40px;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        #crosshair::before, #crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(0, 255, 0, 0.6);
+        }
+
+        #crosshair::before { top: 50%; left: 0; width: 100%; height: 2px; transform: translateY(-50%); }
+        #crosshair::after { top: 0; left: 50%; width: 2px; height: 100%; transform: translateX(-50%); }
+
+        #coords {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(25px, 25px);
+            font-family: monospace;
+            font-size: 14px;
+            color: #00ff00;
+            text-shadow: 2px 2px 2px black;
+            pointer-events: none;
+        }
+
+        #info-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 12px;
+            line-height: 1.6;
+            color: #ccc;
+            border-left: 4px solid #ff4d4d;
+        }
+
+        .unit-desc { font-style: italic; color: #aaa; margin-top: 5px; font-size: 12px; }
+
+        #log-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            width: 250px;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #444;
+            z-index: 100;
+        }
+
+        #log-panel h3 { margin-top: 0; font-size: 14px; color: #00ff00; border-bottom: 1px solid #333; padding-bottom: 8px; }
+        #pos-log { font-family: monospace; font-size: 11px; color: #ccc; }
+        .log-entry { margin-bottom: 4px; border-bottom: 1px solid #222; padding-bottom: 2px; }
+
+        #quadrants {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .q-line-h { position: absolute; top: 50%; left: 0; width: 100%; height: 1px; background: rgba(255,255,255,0.1); }
+        .q-line-v { position: absolute; top: 0; left: 50%; width: 1px; height: 100%; background: rgba(255,255,255,0.1); }
+
+        #target-indicator {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #ff0000;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 150;
+            display: none;
+            transition: transform 0.1s;
+        }
+
+        #target-indicator::before {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 30px; height: 2px;
+            background: rgba(255, 0, 0, 0.5);
+            transform: translate(-50%, -50%);
+        }
+        #target-indicator::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 2px; height: 30px;
+            background: rgba(255, 0, 0, 0.5);
+            transform: translate(-50%, -50%);
+        }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <h2>Enemy AI Test</h2>
+        
+        <div class="control-group">
+            <label>Select Enemy Unit</label>
+            <select id="enemy-select">
+                <option value="zero_green">A6M Zero (Green)</option>
+                <option value="zero_light_green">A6M Zero (Light Green)</option>
+                <option value="zero_white">A6M Zero (White)</option>
+                <option value="d3a">D3A Val</option>
+                <option value="g3m">G3M Nell</option>
+            </select>
+            <div id="unit-description" class="unit-desc">
+                녹색: 직선 접근 후 공격 및 이탈
+            </div>
+        </div>
+
+        <div class="control-group">
+            <button id="spawn-btn" class="primary">SPAWN UNIT</button>
+            <button id="reset-btn" style="margin-top: 10px;">RESET SCENE</button>
+        </div>
+    </div>
+
+    <div id="quadrants">
+        <div class="q-line-h"></div>
+        <div class="q-line-v"></div>
+    </div>
+
+    <div id="log-panel">
+        <h3>Position Data Log</h3>
+        <div id="pos-log">좌표 기록 (Press 'L' to log current pos)</div>
+        <button id="copy-log-btn" style="margin-top: 10px; padding: 5px; font-size: 11px;">Copy Log to Clipboard</button>
+        <button id="clear-log-btn" style="margin-top: 5px; padding: 5px; font-size: 11px; background: #444;">Clear Log</button>
+    </div>
+
+    <div id="target-indicator" style="position: absolute; width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-bottom: 20px solid #ff0000; pointer-events: none; z-index: 150; display: none;"></div>
+    
+    <div id="status-hud" style="position: absolute; top: 20px; right: 20px; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 6px; font-family: monospace; color: #ffcc00; text-align: right; z-index: 100;">
+        ENEMY STATUS<br>
+        STATE: <span id="unit-state">-</span><br>
+        SPEED: <span id="unit-speed">0</span> u/f<br>
+        DIST: <span id="unit-dist">0</span> m
+    </div>
+    <div id="coords">X: 0.00, Y: 0.00</div>
+
+    <div id="info-panel">
+        <strong>CONTROLS:</strong><br>
+        Mouse: Orbit View (Left: Rotate, Right: Pan)<br>
+        Wheel: Zoom In/Out<br>
+        <br>
+        <strong>COORDINATE SYSTEM:</strong><br>
+        Center: (0, 0, 0)<br>
+        X+: Right | Y+: Up | Z-: Forward
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/examples/jsm/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+    <script type="module" src="./test_enemy_ai.js"></script>
+</body>
+</html>

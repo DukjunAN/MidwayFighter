@@ -1,0 +1,11 @@
+Model Information:
+* title:	IJN Shinano
+* source:	https://sketchfab.com/3d-models/ijn-shinano-23b3cfa42dd04e388da866b58dbf76b3
+* author:	xNotDumb (https://sketchfab.com/xNotDumb)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "IJN Shinano" (https://sketchfab.com/3d-models/ijn-shinano-23b3cfa42dd04e388da866b58dbf76b3) by xNotDumb (https://sketchfab.com/xNotDumb) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MidwayFighter - Aircraft Test Room</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: sans-serif; background-color: #000; }
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #444;
+            user-select: none;
+            width: 250px;
+        }
+        #ui h2 { margin-top: 0; font-size: 18px; color: #00d2ff; }
+        .control-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-size: 12px; color: #aaa; }
+        select, input, button {
+            width: 100%;
+            padding: 8px;
+            background: #222;
+            color: white;
+            border: 1px solid #555;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .checkbox-group { display: flex; align-items: center; gap: 10px; }
+        .checkbox-group input { width: auto; }
+        .info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: #888;
+            font-size: 11px;
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
+        }
+        #status {
+            font-size: 12px;
+            color: #ccc;
+            line-height: 1.5;
+            margin-top: 10px;
+        }
+        #status.error { color: #ff7777; }
+        #status.ok { color: #8aff8a; }
+        #hierarchy div:hover { background: #333; }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <h2>기체 기믹 테스트룸</h2>
+        
+        <div class="control-group">
+            <label>기체 선택</label>
+            <select id="aircraft-select">
+                <option value="f4f">F4F Wildcat (Player)</option>
+                <option value="zero">A6M Zero (Enemy)</option>
+                <option value="tbf">TBF Avenger (Player)</option>
+                <option value="g3m">G3M Nell (Enemy)</option>
+                <option value="d3a">D3a Val (Enemy)</option>
+            </select>
+        </div>
+
+        <div class="control-group checkbox-group">
+            <input type="checkbox" id="propeller-auto" checked>
+            <label for="propeller-auto">프로펠러 자동 회전</label>
+        </div>
+
+        <div class="control-group">
+            <label>회전 속도</label>
+            <input type="range" id="propeller-speed" min="0" max="1" step="0.01" value="0.3">
+        </div>
+
+        <div class="control-group">
+            <label>프로펠러 회전축</label>
+            <select id="propeller-axis">
+                <option value="y">Y (Default)</option>
+                <option value="x">X</option>
+                <option value="z">Z</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label>뮤즐 오프셋</label>
+            <input type="range" id="muzzle-offset" min="0" max="2" step="0.05" value="0.2">
+        </div>
+
+        <div class="control-group checkbox-group">
+            <input type="checkbox" id="fire-test">
+            <label for="fire-test">기관총 발사 (Flash/Tracer)</label>
+        </div>
+
+        <div class="control-group checkbox-group">
+            <input type="checkbox" id="show-helpers" checked>
+            <label for="show-helpers">헬퍼 표시 (축/바운딩박스)</label>
+        </div>
+
+        <div class="control-group">
+            <button id="reset-camera">카메라 리셋</button>
+        </div>
+
+        <div class="control-group">
+            <button id="copy-config" style="background: #2c3e50;">현재 설정 복사 (Console)</button>
+        </div>
+
+        <div id="status">모델 로드 준비 중...</div>
+
+        <div id="hierarchy-container" style="margin-top: 20px; border-top: 1px solid #444; padding-top: 10px;">
+            <label>모델 계층 구조 (Hierarchy)</label>
+            <div id="hierarchy" style="font-size: 10px; color: #888; max-height: 200px; overflow-y: auto; background: #111; padding: 5px; margin-top: 5px;">
+            </div>
+        </div>
+    </div>
+
+    <div class="info">
+        W/S: Pitch (Look up/down) | A/D: Roll (Left/Right) | Shift: Propeller Turbo<br>
+        Space: Fire (Flash Test) | Mouse Wheel: Zoom
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/examples/jsm/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+    <script type="module" src="./test_aircraft.js"></script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+IJN Shinano 3D Model By xNotDumb From Sketchfab
+
+D:\GameFactory\MidwayFighter\Assets\Enemy\carrier\shinano
+
+shinano.bin
+shinano.glb
+
+textures 디렉토리 존재

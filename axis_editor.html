@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>F4F 와일드캣 축 교정기 (마우스 컨트롤 포함)</title>
+    <style>
+        body { margin: 0; background: #000; color: #fff; font-family: sans-serif; display: flex; height: 100vh; }
+        #sidebar { width: 320px; background: #1a1a1a; padding: 20px; border-right: 1px solid #333; display: flex; flex-direction: column; gap: 15px; z-index: 10; }
+        #viewport { flex: 1; position: relative; }
+        h2 { color: #4dabf7; font-size: 1.1em; text-align: center; }
+        .btn-load { background: #4dabf7; padding: 12px; color: #000; font-weight: bold; cursor: pointer; border-radius: 4px; text-align: center; display: block; }
+        .control-panel { background: #222; padding: 15px; border-radius: 6px; }
+        label { font-size: 0.8em; color: #aaa; display: block; margin-bottom: 5px; }
+        input[type="range"] { width: 100%; margin-bottom: 10px; }
+        .val { color: #4dabf7; float: right; font-weight: bold; }
+        .guide { font-size: 0.8em; color: #888; line-height: 1.5; padding: 10px; background: #111; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+<div id="sidebar">
+    <h2>와일드캣 축 교정기</h2>
+    <label class="btn-load" for="fileInput">와일드캣 .glb 선택</label>
+    <input type="file" id="fileInput" accept=".glb" style="display:none">
+    
+    <div class="guide">
+        🖱️ <b>조작법</b><br>
+        - 좌클릭 드래그: 카메라 회전<br>
+        - 우클릭 드래그: 카메라 이동<br>
+        - 마우스 휠: 확대 / 축소
+    </div>
+
+    <div class="control-panel">
+        <label>회전 속도 <span id="v-speed" class="val">1.0</span></label>
+        <input type="range" id="speed" min="0" max="3" step="0.1" value="1">
+        
+        <label>앞뒤 기울기(X) <span id="v-rotX" class="val">0°</span></label>
+        <input type="range" id="rotX" min="-180" max="180" value="0">
+        
+        <label>좌우 비틀기(Z) <span id="v-rotZ" class="val">0°</span></label>
+        <input type="range" id="rotZ" min="-180" max="180" value="0">
+    </div>
+    
+    <div id="status" style="font-size: 0.8em; color: #51cf66;">모델을 대기 중...</div>
+</div>
+
+<div id="viewport"></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.150.1/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.150.1/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+    import * as THREE from 'three';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    let scene, camera, renderer, controls, propGroup, propMesh = null;
+
+    function init() {
+        scene = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera(50, (window.innerWidth - 320) / window.innerHeight, 0.01, 2000);
+        camera.position.set(5, 5, 5);
+
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth - 320, window.innerHeight);
+        document.getElementById('viewport').appendChild(renderer.domElement);
+
+        // 마우스 컨트롤 추가 (확대/축소 가능)
+        controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        scene.add(new THREE.AmbientLight(0xffffff, 1));
+        const light = new THREE.DirectionalLight(0xffffff, 1);
+        light.position.set(10, 10, 10);
+        scene.add(light);
+
+        propGroup = new THREE.Group();
+        scene.add(propGroup);
+        propGroup.add(new THREE.AxesHelper(5)); // 축 가이드 크게 표시
+
+        animate();
+    }
+
+    document.getElementById('fileInput').onchange = (e) => {
+        const file = e.target.files[0];
+        const url = URL.createObjectURL(file);
+        
+        new GLTFLoader().load(url, (gltf) => {
+            const model = gltf.scene;
+            let found = null;
+            // 모델의 크기가 너무 크거나 작을 수 있으므로 자동 스케일 조정 로직 추가
+            const box = new THREE.Box3().setFromObject(model);
+            const size = box.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z);
+            if(maxDim > 10) model.scale.setScalar(10 / maxDim);
+
+            model.traverse(n => {
+                if(n.isMesh && n.name.includes('F4F_Propellor')) found = n;
+            });
+
+            if(found) {
+                if(propMesh) propGroup.remove(propMesh);
+                propMesh = found;
+                propMesh.position.set(0, 0, 0); // 축의 중앙으로 강제 이동
+                propGroup.add(propMesh);
+                document.getElementById('status').innerText = "프로펠러 로드 성공: " + found.name;
+                
+                // 카메라를 프로펠러에 맞춤
+                controls.target.set(0, 0, 0);
+                camera.position.set(2, 2, 2);
+                controls.update();
+            } else {
+                document.getElementById('status').innerText = "Propeller 메쉬를 못 찾아 전체 모델을 표시합니다.";
+                scene.add(model);
+            }
+        });
+    };
+
+    // 슬라이더 제어
+    const s_speed = document.getElementById('speed');
+    const s_rotX = document.getElementById('rotX');
+    const s_rotZ = document.getElementById('rotZ');
+
+    function animate() {
+        requestAnimationFrame(animate);
+        if(propGroup) {
+            propGroup.rotation.y += 0.02 * parseFloat(s_speed.value);
+        }
+        if(propMesh) {
+            propMesh.rotation.x = THREE.MathUtils.degToRad(s_rotX.value);
+            propMesh.rotation.z = THREE.MathUtils.degToRad(s_rotZ.value);
+            document.getElementById('v-rotX').innerText = s_rotX.value + '°';
+            document.getElementById('v-rotZ').innerText = s_rotZ.value + '°';
+        }
+        document.getElementById('v-speed').innerText = s_speed.value;
+        controls.update();
+        renderer.render(scene, camera);
+    }
+
+    init();
+</script>
+</body>
+</html>

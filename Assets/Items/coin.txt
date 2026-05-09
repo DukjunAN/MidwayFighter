@@ -1,0 +1,12 @@
+D:\GameFactory\MidwayFighter\Assets\Items
+
+Stylized Coin 3D Model Created By barracudabyte
+
+coin.glb
+적기 Zero, D3a 격추시 떨어지는 아이템(이미지) . 격추된 장소에 남아있다. 1코인당 100point
+
+
+Coin Pouch 3D Model Created By Andy B
+
+coin_pouch.glb
+적 보스가 격추/격추시 남겨지는 코인파우치 아이템(이미지). 격추된 장소에 남아있다. 1개당 1000point

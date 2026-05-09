@@ -1,0 +1,19 @@
+Mitsubishi A6M2 Zero Free 3D model Created by Vejtasa-Vojtech From CGTRADER
+
+D:\GameFactory\MidwayFighter\Assets\Enemy 에 A6M_Zero.glb 모델
+
+D:\GameFactory\MidwayFighter\Assets\Enemy\texture 아래 3개 디렉토리에 색깔별 존재
+zero green
+zero light green
+zero white
+
+
+"propeller" Y축 회전
+wheel right Y축 -89 랜딩기어 접음 , Y축 0도 랜딩기어 내림
+wheel left   Y축  85 랜딩기어 접음 , Y축 0도 랜딩기어 내림
+
+블랜더에서 해당 모델 비행기의 코를 -Y축, 비행기 등은 Z축 , 날개는 X축 입니다.
+
+적을 공격하는 무기 오브젝트는 "gun01" , "gun02" 입니다. (Muzzle 이펙트)
+
+게임내 크기(scale) 3.00

@@ -1,0 +1,7 @@
+IJN Soryu 3D Model By 42manako From Sketchfab
+
+D:\GameFactory\MidwayFighter\Assets\Enemy\carrier
+
+ijn_soryu.glb
+
+게임내 크기 : 0.08

@@ -1,0 +1,10 @@
+F4F 3D Model ThomasBeerens From Sketchfab
+
+D:\GameFactory\MidwayFighter\Assets\Player\F4F Wildcat
+F4F_2.glb
+
+주인공 기체 이며 
+프로펠러는 모델의 오브젝트 F4F 아래 "F4F_Propellor"으로  Y축 회전
+기관총 사격 Muzzle 이펙트 위치는 오브젝트 "gun001" ~ "gun006" 이다.
+
+게임내 스케일은 1.0

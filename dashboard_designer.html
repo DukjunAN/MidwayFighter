@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Custom Designer</title>
+    <style>
+        body { margin: 0; display: flex; flex-direction: column; height: 100vh; font-family: monospace; background: #111; color: #0f0; }
+        #header { padding: 10px; background: #000; border-bottom: 1px solid #0f0; font-size: 16px; font-weight: bold; }
+        #main { display: flex; flex: 1; overflow: hidden; }
+        
+        #canvas-container { flex: 1; border-right: 1px solid #0f0; position: relative; background: #222; }
+        canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+        
+        #preview-container { flex: 1; position: relative; background: #000; }
+        #3d-view { width: 100%; height: 100%; }
+        
+        #code-panel { height: 200px; background: #0a0a0a; border-top: 1px solid #0f0; display: flex; flex-direction: column; }
+        #code-header { padding: 5px 10px; background: #1a1a1a; font-size: 12px; border-bottom: 1px solid #333; }
+        textarea { flex: 1; background: #000; color: #0f0; border: none; padding: 10px; font-family: monospace; outline: none; resize: none; font-size: 13px; }
+        
+        .toolbar { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.8); padding: 10px; border: 1px solid #0f0; z-index: 10; font-size: 12px; }
+        button { background: #111; color: #0f0; border: 1px solid #0f0; padding: 5px 10px; cursor: pointer; font-family: monospace; margin-right: 5px; }
+        button:hover { background: #0f0; color: #000; }
+        input[type="range"] { vertical-align: middle; }
+        .hint { color: #888; font-size: 11px; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div id="header">[ CUSTOM DASHBOARD DESIGNER ]</div>
+    <div id="main">
+        <div id="canvas-container">
+            <div class="toolbar">
+                <strong>[ 1. 단면 그리기 (2D) ]</strong><br><br>
+                <button id="btn-clear">초기화</button>
+                <button id="btn-close">도형 닫기 (완성)</button>
+                <button id="btn-undo">실행 취소</button>
+                <br><br>
+                <label>두께(Depth): <input type="range" id="val-depth" min="1" max="100" value="40"></label>
+                <div class="hint">* 캔버스를 클릭하여 꼭짓점을 추가하세요.</div>
+                <div class="hint">* 중앙 십자선이 모델의 기준점(0,0)입니다.</div>
+            </div>
+            <canvas id="draw-canvas"></canvas>
+        </div>
+        <div id="preview-container">
+            <div class="toolbar">
+                <strong>[ 2. 3D 미리보기 ]</strong><br>
+                <div class="hint">* 마우스 드래그로 회전/확대 가능</div>
+            </div>
+            <div id="3d-view"></div>
+        </div>
+    </div>
+    <div id="code-panel">
+        <div id="code-header"><strong>[ 3. 생성된 코드 ]</strong> (이 코드를 복사하여 ControlUI.js 의 대시보드 생성 부분에 붙여넣으세요)</div>
+        <textarea id="code-output" readonly>// 2D 단면을 그려 도형을 완성하면 여기에 코드가 생성됩니다.</textarea>
+    </div>
+
+    <script type="module" src="./dashboard_designer.js"></script>
+</body>
+</html>

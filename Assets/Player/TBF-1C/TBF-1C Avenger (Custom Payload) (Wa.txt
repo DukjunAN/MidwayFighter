@@ -1,0 +1,15 @@
+TBF-1C Avenger (Custom Payload) (War Thunder) 3D Model By KojfDiscord
+
+D:\GameFactory\MidwayFighter\Assets\Player\TBF-1C
+TBF-1C.glb
+
+뒤면 기관총 오브젝트 "Object_4" 
+몸통 아래 뒤편 기관총 오브젝트 "Object_8"
+날개 에 붙은 기관총 오브젝트 "guns01" , "guns02" 
+
+프로펠러 "Propella" 회전은 Y축
+
+비행기 몸통 아래 폭탄 덮개 오브젝트 "BoomBay_Door" 인데 열지 못하니 무시하고
+그 안에 폭탄 오브젝트는 "Object_2" 이다. 
+
+게임내 스케일은 1.1 

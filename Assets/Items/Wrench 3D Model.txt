@@ -1,0 +1,6 @@
+Wrench 3D Model mirani55 Created By Safina Irani From Sketchfab
+
+D:\GameFactory\MidwayFighter\Assets\Items
+wrench.glb
+
+적기가 격추당한 위치에 떨어지는 아이템으로 주인공이 먹으면 체력 25 가 복원 됨.

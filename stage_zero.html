@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MidwayFighter - Zero Intercept</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; }
+        canvas { display: block; }
+
+        /* Game HUD */
+        #hud {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        /* Target Indicator */
+        #target-indicator {
+            position: absolute;
+            width: 40px; height: 40px;
+            border: 2px solid #ff0000;
+            border-radius: 50%;
+            display: none;
+            transform: translate(-50%, -50%);
+        }
+        #target-indicator::after {
+            content: ''; position: absolute; top: 50%; left: 50%;
+            width: 60px; height: 2px; background: rgba(255,0,0,0.4);
+            transform: translate(-50%, -50%);
+        }
+        #target-indicator::before {
+            content: ''; position: absolute; top: 50%; left: 50%;
+            width: 2px; height: 60px; background: rgba(255,0,0,0.4);
+            transform: translate(-50%, -50%);
+        }
+
+        /* Status Panels */
+        .status-panel {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px 15px;
+            border-radius: 8px;
+            color: #00ff00;
+            font-family: monospace;
+            font-size: 14px;
+            border-left: 4px solid #ff0000;
+        }
+        #player-status { top: 20px; left: 20px; }
+        #enemy-status { top: 20px; right: 20px; text-align: right; border-left: 0; border-right: 4px solid #ffcc00; color: #ffcc00; }
+
+        /* Control UI */
+        #ui-layer {
+            position: absolute;
+            bottom: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 200;
+        }
+        
+        #ui-fire-btn {
+            position: absolute;
+            bottom: 40px; right: 40px;
+            width: 100px; height: 100px;
+            background: rgba(255, 0, 0, 0.3);
+            border: 4px solid rgba(255, 0, 0, 0.6);
+            border-radius: 50%;
+            pointer-events: auto;
+            display: flex; align-items: center; justify-content: center;
+            color: white; font-weight: bold; font-size: 20px;
+            transition: transform 0.1s, background 0.1s;
+        }
+        #ui-fire-btn:active, #ui-fire-btn.pressing { transform: scale(0.9); background: rgba(255, 0, 0, 0.6); }
+
+        #ui-throttle-container {
+            position: absolute;
+            bottom: 40px; left: 40px;
+            width: 40px; height: 200px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 20px;
+            pointer-events: auto;
+        }
+        #ui-throttle-handle {
+            position: absolute;
+            left: 50%; bottom: 50%;
+            width: 60px; height: 30px;
+            background: #ffcc00;
+            border-radius: 5px;
+            transform: translateX(-50%);
+            box-shadow: 0 0 10px rgba(255, 204, 0, 0.5);
+        }
+
+        #joystick-base {
+            position: absolute;
+            width: 120px; height: 120px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: none;
+            pointer-events: none;
+        }
+        #joystick-stick {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 60px; height: 60px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* Message Overlay */
+        #game-msg {
+            position: absolute;
+            top: 40%; left: 50%;
+            transform: translate(-50%, -50%);
+            color: white; font-size: 40px; font-weight: bold;
+            text-shadow: 0 0 20px rgba(255,0,0,0.8);
+            pointer-events: none;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+
+        .hp-bar { width: 150px; height: 10px; background: #333; border: 1px solid #555; margin-top: 5px; overflow: hidden; }
+        .hp-fill { width: 100%; height: 100%; background: #00ff00; transition: width 0.3s; }
+    </style>
+</head>
+<body>
+    <div id="hud">
+        <div id="target-indicator"></div>
+        
+        <div id="player-status" class="status-panel">
+            F4F WILDCAT<br>
+            SPEED: <span id="p-speed">0</span> km/h<br>
+            ALT: <span id="p-alt">500</span> m
+            <div class="hp-bar"><div id="p-hp-fill" class="hp-fill"></div></div>
+        </div>
+
+        <div id="enemy-status" class="status-panel">
+            NEAREST TARGET<br>
+            TYPE: <span id="e-type">-</span><br>
+            DIST: <span id="e-dist">0</span> m<br>
+            STATE: <span id="e-state">-</span>
+        </div>
+
+        <div id="game-msg">WAVE START</div>
+    </div>
+
+    <div id="ui-layer">
+        <div id="ui-fire-btn">FIRE</div>
+        <div id="ui-throttle-container">
+            <div id="ui-throttle-handle"></div>
+        </div>
+        <div id="joystick-base">
+            <div id="joystick-stick"></div>
+        </div>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/examples/jsm/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+    <script type="module" src="./stage_zero.js"></script>
+</body>
+</html>
