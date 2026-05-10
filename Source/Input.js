@@ -9,8 +9,12 @@ export class Input {
     constructor() {
         this.keys = {};
         this.throttle = 0.5; 
-        this.isFiring = false;
+        this.isFiringUI = false; // UI 발사 상태 분리
         this.invertPitch = false;
+
+        // 특수 기동 상태
+        this.boostActive = false;
+        this.evadeDirection = 0; // -1: 좌측, 1: 우측
 
         // 마우스/터치 드래그 상태
         this.drag = {
@@ -22,6 +26,14 @@ export class Input {
         // 전역 이벤트 리스너 등록
         window.addEventListener('keydown', (e) => { this.keys[e.code] = true; });
         window.addEventListener('keyup', (e) => { this.keys[e.code] = false; });
+    }
+
+    activateBoost() {
+        this.boostActive = true;
+    }
+
+    activateEvade(direction) {
+        this.evadeDirection = direction;
     }
 
     update(deltaTime) {

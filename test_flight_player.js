@@ -50,17 +50,7 @@ class FlightTester {
         this.setupSpeedLines();
         this.loadSounds();
         this.setup3DThrottle();
-
-        // [섬 설정] 바다 대신 바닥 역할을 할 거대 지형
-        this.islandConfig = {
-            id: 'elba',
-            path: 'Assets/Enviroment/terrain/day22_elba_island.glb',
-            pos: new THREE.Vector3(0, -100, 0), 
-            scale: new THREE.Vector3(200, 80, 200), // 가로 세로 200m 유지, 높이만 2배(80) 확대
-            isLoaded: false,
-            mesh: null
-        };
-        // this.loadIslandModel(); // 배경 제거를 위해 비활성화
+        this.setupUIEvents();
 
         // [추가] 오디오 재개 리스너
         const resumeAudio = () => {
@@ -105,8 +95,6 @@ class FlightTester {
 
         // --- Meshes ---
         const throttleGroup = new THREE.Group();
-        // 화면 좌측 하단 구석 혹은 특정 위치에 배치 (비행기 근처가 아닌 UI처럼 고정되거나 별도 위치)
-        // 일단 원점에 배치하되 비행기 업데이트 시 씬에서 고정되도록 함.
         throttleGroup.position.set(-15, -5, -20); 
         this.scene.add(throttleGroup);
 
@@ -141,15 +129,88 @@ class FlightTester {
         this.throttleAssemblage.add(buttonB);
     }
 
-    async loadIslandModel() {
-        const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
-        const loader = new GLTFLoader();
-        loader.load(this.islandConfig.path, (gltf) => {
-            this.islandConfig.mesh = gltf.scene;
-            this.islandConfig.mesh.scale.copy(this.islandConfig.scale);
-            this.islandConfig.mesh.position.copy(this.islandConfig.pos);
-            this.scene.add(this.islandConfig.mesh);
-            this.islandConfig.isLoaded = true;
+    setupUIEvents() {
+        const throttleHandle = document.getElementById('ui-throttle-handle');
+        const throttleContainer = document.getElementById('ui-throttle-container');
+        const fireBtn = document.getElementById('ui-fire-btn');
+        const joystickContainer = document.getElementById('ui-joystick-container');
+        const joystickHandle = document.getElementById('ui-joystick-handle');
+        
+        let isDraggingThrottle = false;
+        let isDraggingJoystick = false;
+
+        const updateThrottle = (e) => {
+            const rect = throttleContainer.getBoundingClientRect();
+            const clientY = (e.touches && e.touches[0]) ? e.touches[0].clientY : e.clientY;
+            let val = 1 - (clientY - rect.top) / rect.height;
+            val = Math.max(0, Math.min(1, val));
+            this.input.throttle = val;
+            if (throttleHandle) throttleHandle.style.top = `${(1 - val) * 100}%`;
+        };
+
+        const updateJoystick = (e) => {
+            const rect = joystickContainer.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            const clientX = (e.touches && e.touches[0]) ? e.touches[0].clientX : e.clientX;
+            const clientY = (e.touches && e.touches[0]) ? e.touches[0].clientY : e.clientY;
+
+            let dx = clientX - centerX;
+            let dy = clientY - centerY;
+            const maxRadius = rect.width / 2;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist > maxRadius) {
+                dx *= maxRadius / dist;
+                dy *= maxRadius / dist;
+            }
+
+            if (joystickHandle) {
+                joystickHandle.style.left = `calc(50% + ${dx}px)`;
+                joystickHandle.style.top = `calc(50% + ${dy}px)`;
+            }
+
+            this.input.drag.active = true;
+            this.input.drag.delta.set(dx * (250 / maxRadius), dy * (250 / maxRadius));
+        };
+
+        const resetJoystick = () => {
+            isDraggingJoystick = false;
+            this.input.drag.active = false;
+            this.input.drag.delta.set(0, 0);
+            if (joystickHandle) {
+                joystickHandle.style.left = '50%';
+                joystickHandle.style.top = '50%';
+            }
+        };
+
+        throttleContainer.addEventListener('mousedown', (e) => { isDraggingThrottle = true; updateThrottle(e); e.stopPropagation(); });
+        throttleContainer.addEventListener('touchstart', (e) => { isDraggingThrottle = true; updateThrottle(e); e.stopPropagation(); }, {passive: false});
+        
+        joystickContainer.addEventListener('mousedown', (e) => { isDraggingJoystick = true; updateJoystick(e); e.stopPropagation(); });
+        joystickContainer.addEventListener('touchstart', (e) => { isDraggingJoystick = true; updateJoystick(e); e.stopPropagation(); }, {passive: false});
+
+        fireBtn.addEventListener('mousedown', (e) => { this.input.isFiring = true; fireBtn.classList.add('pressing'); e.stopPropagation(); });
+        fireBtn.addEventListener('mouseup', () => { this.input.isFiring = false; fireBtn.classList.remove('pressing'); });
+        fireBtn.addEventListener('touchstart', (e) => { e.preventDefault(); this.input.isFiring = true; fireBtn.classList.add('pressing'); e.stopPropagation(); });
+        fireBtn.addEventListener('touchend', () => { this.input.isFiring = false; fireBtn.classList.remove('pressing'); });
+
+        window.addEventListener('mousemove', (e) => { 
+            if (isDraggingThrottle) updateThrottle(e); 
+            if (isDraggingJoystick) updateJoystick(e);
+        });
+        window.addEventListener('touchmove', (e) => { 
+            if (isDraggingThrottle) updateThrottle(e); 
+            if (isDraggingJoystick) updateJoystick(e);
+        }, {passive: false});
+
+        window.addEventListener('mouseup', () => { 
+            isDraggingThrottle = false; 
+            if (isDraggingJoystick) resetJoystick();
+        });
+        window.addEventListener('touchend', () => { 
+            isDraggingThrottle = false; 
+            if (isDraggingJoystick) resetJoystick();
         });
     }
 
@@ -247,7 +308,7 @@ class FlightTester {
         if (this.player && this.player.isLoaded) {
             this.input.update(deltaTime);
 
-            // [수정] 3D 스로틀 모델을 input.throttle과 동기화 (0.0~1.0 -> 0~90도)
+            // 3D 스로틀 모델 동기화
             this.throttleAngle = this.input.throttle * 90;
             if (this.throttleAssemblage) {
                 this.throttleAssemblage.rotation.x = -THREE.MathUtils.degToRad(this.throttleAngle);
@@ -262,7 +323,7 @@ class FlightTester {
 
             this.updateSpeedLines(this.player.currentSpeed);
 
-            const isFiring = this.input.isPressed('KeyF');
+            const isFiring = this.input.isPressed('KeyF') || this.input.isFiring;
             if (isFiring && now - this.lastFireTime > this.player.fireRate) {
                 const shots = this.player.fire();
                 shots.forEach(s => this.bullets.push(new Bullet(this.scene, s.position, s.direction, { speed: 50 })));
@@ -292,28 +353,6 @@ class FlightTester {
             document.getElementById('val-in-y').innerText = axes.y.toFixed(2);
             document.getElementById('val-hp').innerText = Math.floor(this.player.hp); 
             document.getElementById('val-speed').innerText = Math.floor(this.player.currentSpeed);
-            
-            // 아날로그 속도계 바늘 업데이트 (0 ~ 600 km/h 범위를 -120도 ~ 120도 범위로 매핑)
-            const speed = this.player.currentSpeed;
-            const needleAngle = (speed / 600) * 240 - 120;
-            const needleGroup = document.getElementById('ui-speed-needle-group');
-            if (needleGroup) {
-                needleGroup.setAttribute('transform', `rotate(${needleAngle}, 50, 50)`);
-            }
-
-            const digitalSpeed = document.getElementById('ui-speed-digital');
-            if (digitalSpeed) {
-                digitalSpeed.textContent = Math.floor(speed);
-            }
-
-            // 아날로그 고도계 바늘 업데이트 (0 ~ 1000m 범위를 -120도 ~ 120도 범위로 매핑)
-            const alt = this.player.planeGroup.position.y;
-            const altAngle = (Math.max(0, alt) / 1000) * 240 - 120;
-            const altNeedle = document.getElementById('ui-alt-needle-group');
-            const digitalAlt = document.getElementById('ui-alt-digital');
-            if (altNeedle) altNeedle.setAttribute('transform', `rotate(${altAngle}, 50, 50)`);
-            if (digitalAlt) digitalAlt.textContent = Math.floor(alt);
-
             document.getElementById('val-pitch').innerText = THREE.MathUtils.radToDeg(this.player.currentPitch).toFixed(2);
             document.getElementById('val-roll').innerText = THREE.MathUtils.radToDeg(this.player.currentRoll).toFixed(2);
             document.getElementById('val-pos').innerText = `${Math.floor(this.player.planeGroup.position.x)}, ${Math.floor(this.player.planeGroup.position.y)}, ${Math.floor(this.player.planeGroup.position.z)}`;

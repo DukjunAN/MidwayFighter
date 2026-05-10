@@ -5,11 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>미드웨이 전투 (Midway Fighter)</title>
     <style>
-        body { margin: 0; overflow: hidden; font-family: 'Malgun Gothic', sans-serif; background-color: #000; touch-action: none; user-select: none; }
+        body { margin: 0; overflow: hidden; font-family: 'Malgun Gothic', sans-serif; background-color: #111; touch-action: none; user-select: none; display: flex; justify-content: center; align-items: center; height: 100vh; }
         
+        #game-container {
+            position: relative;
+            height: 100vh;
+            width: calc(100vh * 9 / 16);
+            background: #000;
+            overflow: hidden;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+        }
+
         #title-screen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: radial-gradient(circle, rgba(0,0,0,0) 0%, rgba(0,0,0,0.8) 100%);
+            background: radial-gradient(circle, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.9) 100%);
             display: flex; flex-direction: column; justify-content: center; align-items: center;
             z-index: 1000; transition: opacity 1.0s; padding: 20px; box-sizing: border-box; text-align: center;
         }
@@ -25,72 +34,89 @@
         #game-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: none; z-index: 500; }
         #top-left-ui { position: absolute; top: 20px; left: 20px; color: #0f0; font-family: monospace; font-size: 16px; line-height: 1.5; text-shadow: 1px 1px 2px #000; }
         
-        #bottom-left-ui { position: absolute; bottom: 30px; left: 30px; z-index: 600; display: flex; align-items: flex-end; gap: 20px; pointer-events: auto; }
-        #ui-throttle-container { width: 40px; height: 250px; background: rgba(0,0,0,0.4); border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); position: relative; touch-action: none; }
-        #ui-throttle-handle { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 50px; height: 24px; background: #eee; border-radius: 4px; cursor: ns-resize; }
-        #ui-fire-btn { width: 100px; height: 100px; background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.4); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; touch-action: none; }
-        #ui-fire-btn:active, #ui-fire-btn.pressing { background: rgba(255, 0, 0, 0.4); transform: scale(0.9); }
+        #bottom-left-ui { position: absolute; bottom: 40px; left: 30px; z-index: 600; display: flex; align-items: flex-end; gap: 30px; pointer-events: auto; }
+        #bottom-right-ui { position: absolute; bottom: 40px; right: 30px; z-index: 600; display: flex; align-items: flex-end; pointer-events: auto; }
+        
+        /* 고정식 조이스틱 (크기 축소) */
+        #ui-joystick-container { width: 110px; height: 110px; background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; position: relative; touch-action: none; }
+        #ui-joystick-handle { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 50px; height: 50px; background: rgba(255,255,255,0.4); border-radius: 50%; box-shadow: 0 0 10px rgba(0,0,0,0.5); pointer-events: none; }
+        
+        #ui-fire-btn { width: 110px; height: 110px; background: rgba(255,255,255,0.1); border: 4px solid rgba(255,255,255,0.4); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; touch-action: none; }
+        #ui-fire-btn:active, #ui-fire-btn.pressing { background: rgba(255, 0, 0, 0.4); transform: scale(0.95); }
         .bullet-icon { width: 80px; height: 80px; opacity: 0.8; transform: rotate(90deg); }
 
-        #ui-gauges-container { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; z-index: 600; pointer-events: none; }
-        .ui-gauge { width: 120px; height: 120px; }
-        .gauge-bg { fill: rgba(0, 0, 0, 0.5); stroke: rgba(255, 255, 255, 0.2); stroke-width: 2; }
-        .gauge-needle { stroke: #f30; stroke-width: 3; stroke-linecap: round; }
-        .gauge-text { fill: #0f0; font-family: monospace; font-size: 10px; text-anchor: middle; font-weight: bold; }
-
-        #radar-container { position: absolute; top: 20px; right: 20px; width: 140px; height: 140px; background: rgba(0, 30, 0, 0.6); border: 2px solid #0f0; border-radius: 50%; overflow: hidden; z-index: 600; }
+        #radar-container { position: absolute; top: 20px; right: 20px; width: 120px; height: 120px; background: rgba(0, 30, 0, 0.6); border: 2px solid #0f0; border-radius: 50%; overflow: hidden; z-index: 600; }
         
+        /* Central Reflex HUD (크기 축소) */
+        #central-hud {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 240px; height: 240px; border: 2px solid rgba(57, 255, 20, 0.4); border-radius: 50%;
+            pointer-events: none; display: flex; align-items: center; justify-content: space-between; z-index: 100;
+        }
+        .hud-value {
+            color: #39FF14; font-family: 'Courier New', Courier, monospace; font-weight: bold;
+            text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+        }
+        #alt-display { font-size: 26px; margin-left: -60px; text-align: right; width: 110px; }
+        #speed-display { font-size: 26px; margin-right: -60px; text-align: left; width: 110px; }
+        .label { font-size: 12px; display: block; opacity: 0.8; margin-bottom: 3px; }
+
         #hit-flash { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,0,0,0.3); pointer-events: none; display: none; z-index: 1000; }
         #hit-flash.active { display: block; }
     </style>
 </head>
 <body>
-    <div id="title-screen">
-        <h1>미드웨이 전투</h1>
-        <div id="subtitle">BATTLE OF MIDWAY</div>
-        
-        <div class="setup-box">
-            <label class="option-row">
-                <input type="checkbox" id="invert-pitch"> Invert Axis (상하 반전)
-            </label>
-        </div>
-
-        <button id="start-button">게임 시작</button>
-    </div>
-
-    <div id="game-ui">
-        <div id="radar-container">
-            <canvas id="radar-canvas" width="140" height="140"></canvas>
-            <div style="position: absolute; top: 50%; left: 50%; width: 4px; height: 4px; background: #fff; border-radius: 50%; transform: translate(-50%, -50%);"></div>
-        </div>
-
-        <div id="top-left-ui">
-            HP: <span id="val-hp">100</span> | SPEED: <span id="val-speed">0</span> km/h<br>
-            ALT: <span id="val-alt">0</span>m | UNITS: <span id="val-units">0</span>
-        </div>
-
-        <div id="bottom-left-ui">
-            <div id="ui-throttle-container">
-                <div id="ui-throttle-handle"></div>
+    <div id="game-container">
+        <div id="title-screen">
+            <h1>미드웨이 전투</h1>
+            <div id="subtitle">BATTLE OF MIDWAY</div>
+            
+            <div class="setup-box">
+                <label class="option-row">
+                    <input type="checkbox" id="invert-pitch"> Invert Axis (상하 반전)
+                </label>
             </div>
-            <div id="ui-fire-btn">
-                <svg class="bullet-icon" viewBox="8 1 20 22">
-                    <g fill-opacity="0.5">
-                        <path d="M10,2L8.5,5H11.5L10,2M8.5,6V18H11.5V6H8.5M8.5,19V21A1,1 0 0,0 9.5,22H10.5A1,1 0 0,0 11.5,21V19H8.5Z" fill="white"/>
-                        <path d="M18,2L16.5,5H19.5L18,2M16.5,6V18H19.5V6H16.5M16.5,19V21A1,1 0 0,0 17.5,22H18.5A1,1 0 0,0 19.5,21V19H16.5Z" fill="white"/>
-                        <path d="M26,2L24.5,5H27.5L26,2M24.5,6V18H27.5V6H24.5M24.5,19V21A1,1 0 0,0 25.5,22H26.5A1,1 0 0,0 27.5,21V19H24.5Z" fill="white"/>
-                    </g>
-                </svg>
+
+            <button id="start-button">게임 시작</button>
+        </div>
+
+        <div id="game-ui">
+            <div id="central-hud">
+                <div id="alt-display" class="hud-value"><span class="label">ALT</span><span id="alt-val-central">0</span><small>m</small></div>
+                <div id="speed-display" class="hud-value"><span class="label">SPEED</span><span id="speed-val-central">0</span></div>
+            </div>
+
+            <div id="radar-container">
+                <canvas id="radar-canvas" width="140" height="140"></canvas>
+                <div style="position: absolute; top: 50%; left: 50%; width: 4px; height: 4px; background: #fff; border-radius: 50%; transform: translate(-50%, -50%);"></div>
+            </div>
+
+            <div id="top-left-ui">
+                HP: <span id="val-hp">100</span> | SPEED: <span id="speed-val">0</span> km/h<br>
+                ALT: <span id="alt-val">0</span>m | UNITS: <span id="val-units">0</span>
+            </div>
+
+            <div id="bottom-left-ui">
+                <div id="ui-joystick-container" style="width: 120px; height: 120px;">
+                    <div id="ui-joystick-handle" style="width: 50px; height: 50px;"></div>
+                </div>
+            </div>
+
+            <div id="bottom-right-ui">
+                <div id="ui-fire-btn" style="width: 110px; height: 110px;">
+                    <svg class="bullet-icon" style="width: 80px; height: 80px;" viewBox="8 1 20 22">
+                        <g fill-opacity="0.5">
+                            <path d="M10,2L8.5,5H11.5L10,2M8.5,6V18H11.5V6H8.5M8.5,19V21A1,1 0 0,0 9.5,22H10.5A1,1 0 0,0 11.5,21V19H8.5Z" fill="white"/>
+                            <path d="M18,2L16.5,5H19.5L18,2M16.5,6V18H19.5V6H16.5M16.5,19V21A1,1 0 0,0 17.5,22H18.5A1,1 0 0,0 19.5,21V19H16.5Z" fill="white"/>
+                            <path d="M26,2L24.5,5H27.5L26,2M24.5,6V18H27.5V6H24.5M24.5,19V21A1,1 0 0,0 25.5,22H26.5A1,1 0 0,0 27.5,21V19H24.5Z" fill="white"/>
+                        </g>
+                    </svg>
+                </div>
             </div>
         </div>
 
-        <div id="ui-gauges-container">
-            <div class="ui-gauge"><svg viewBox="0 0 100 100"><circle class="gauge-bg" cx="50" cy="50" r="48" /><text class="gauge-text" x="50" y="80">km/h</text><g id="ui-speed-needle-group" transform="rotate(-120, 50, 50)"><line class="gauge-needle" x1="50" y1="50" x2="50" y2="12" /></g></svg></div>
-            <div class="ui-gauge"><svg viewBox="0 0 100 100"><circle class="gauge-bg" cx="50" cy="50" r="48" /><text class="gauge-text" x="50" y="80">meters</text><g id="ui-alt-needle-group" transform="rotate(-120, 50, 50)"><line class="gauge-needle" x1="50" y1="50" x2="50" y2="12" /></g></svg></div>
-        </div>
+        <div id="hit-flash"></div>
     </div>
-
-    <div id="hit-flash"></div>
 
     <script type="importmap">
         {

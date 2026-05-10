@@ -16,7 +16,7 @@ export const Stage1Config = {
     },
     environment: {
         waterColor: 0x004e5f,
-        cloudCount: 20,
+        cloudCount: 20, // 50 -> 20 (성능 최적화)
         cloudArea: 2000,
         cloudHeight: 500
     },

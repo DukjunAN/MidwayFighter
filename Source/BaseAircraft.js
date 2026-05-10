@@ -55,9 +55,7 @@ export class BaseAircraft {
     setupMesh() {
         if (!this.mesh) return;
         
-        // [수정] 생성 즉시 숨김 처리 (시야 가림 방지)
         this.mesh.visible = false;
-        
         this.mesh.scale.setScalar(this.scale);
         this.mesh.rotation.y = Math.PI;
 
@@ -114,7 +112,8 @@ export class BaseAircraft {
             else prop.rotateY(rotSpeed);
         });
         this.muzzleFlashes.forEach(flash => {
-            flash.visible = isFiring ? Math.random() > 0.3 : false;
+            // 사격 중일 때 랜덤하게 깜빡여서 뮤즐 효과 극대화
+            flash.visible = isFiring ? Math.random() > 0.2 : false;
         });
     }
 

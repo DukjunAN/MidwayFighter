@@ -7,7 +7,7 @@ export const AircraftPresets = {
         id: 'f4f_wildcat',
         name: 'F4F Wildcat',
         modelPath: 'Assets/Player/F4F Wildcat/F4F_4.glb',
-        scale: 1.0,
+        scale: 6.5, // 1.0 -> 6.5 로 상향 (가시성 확보)
         altitude: 500,
         stats: { hp: 200, speed: 2.0, agility: 0.8, fireRate: 120 },
         propeller: { 
@@ -19,7 +19,7 @@ export const AircraftPresets = {
             main: ['gun001', 'gun002', 'gun003', 'gun004', 'gun005', 'gun006'],
             autoRear: false,
             muzzleOffset: 0.2,
-            muzzleScale: 1.0 // 기본 2.0에서 절반으로 축소
+            muzzleScale: 1.0 
         }
     },
     'tbf': {
