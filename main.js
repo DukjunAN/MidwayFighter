@@ -5,9 +5,8 @@ import { Enemy } from './Source/Enemy.js';
 import { Bullet } from './Source/Bullet.js';
 import { EnvironmentManager } from './Source/Environment.js';
 
-// 공유 수학 객체 (연산 격리)
+// 공유 수학 객체
 const _vRadar = new THREE.Vector3();
-const _vSpeedLine = new THREE.Vector3();
 const _vTemp = new THREE.Vector3();
 const _mRadar = new THREE.Matrix4();
 
@@ -36,7 +35,11 @@ class Game {
         this.windLines = null;
         this.audioListener = new THREE.AudioListener();
         this.sounds = { engine: null, gun: null };
-        this.radar = { canvas: null, ctx: null, range: 4000 };
+        this.lockTarget = null;
+
+        // 고도 경고 관련
+        this.altWarningActive = false;
+        this.altWarningTimer = 10.0;
 
         // 카메라 쉐이크
         this.shakeAmount = 0;
@@ -61,8 +64,6 @@ class Game {
         sun.position.set(0, 500, -500);
         this.scene.add(sun);
         this.environment = new EnvironmentManager(this.scene);
-        this.radar.canvas = document.getElementById('radar-canvas');
-        if (this.radar.canvas) this.radar.ctx = this.radar.canvas.getContext('2d');
         
         this.setupUIEvents();
 
@@ -194,19 +195,10 @@ class Game {
         fireBtn.addEventListener('touchstart', (e) => { e.preventDefault(); this.input.isFiringUI = true; fireBtn.classList.add('pressing'); e.stopPropagation(); });
         fireBtn.addEventListener('touchend', () => { this.input.isFiringUI = false; fireBtn.classList.remove('pressing'); });
 
-        window.addEventListener('mousemove', (e) => { 
-            if (isDraggingJoystick) updateJoystick(e);
-        });
-        window.addEventListener('touchmove', (e) => { 
-            if (isDraggingJoystick) updateJoystick(e);
-        }, {passive: false});
-
-        window.addEventListener('mouseup', (e) => { 
-            handleJoystickUp(e);
-        });
-        window.addEventListener('touchend', (e) => { 
-            handleJoystickUp(e);
-        });
+        window.addEventListener('mousemove', (e) => { if (isDraggingJoystick) updateJoystick(e); });
+        window.addEventListener('touchmove', (e) => { if (isDraggingJoystick) updateJoystick(e); }, {passive: false});
+        window.addEventListener('mouseup', (e) => { handleJoystickUp(e); });
+        window.addEventListener('touchend', (e) => { handleJoystickUp(e); });
     }
 
     async preloadModels() {
@@ -240,11 +232,11 @@ class Game {
     }
 
     setupSpeedLines(cameraPos) {
-        const count = 30; const geometry = new THREE.BufferGeometry(); const positions = new Float32Array(count * 6); 
-        const basePos = cameraPos || new THREE.Vector3(0, 500, 0);
+        const count = 100;
+        const geometry = new THREE.BufferGeometry(); const positions = new Float32Array(count * 6); 
         for (let i = 0; i < count; i++) {
             const idx = i * 6;
-            positions[idx] = (Math.random()-0.5)*300; positions[idx+1] = (Math.random()-0.5)*200; positions[idx+2] = -300 - Math.random()*500;
+            positions[idx] = (Math.random()-0.5)*500; positions[idx+1] = (Math.random()-0.5)*300; positions[idx+2] = -300 - Math.random()*1000;
         }
         geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
         const material = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 });
@@ -256,23 +248,15 @@ class Game {
         if (!this.windLines || !this.player || !this.isGameStarted) return;
         const posAttr = this.windLines.geometry.attributes.position;
         const speedFactor = Math.max(0, (this.player.currentSpeed - 200) / 300); 
-        this.windLines.material.opacity = speedFactor * 0.5;
+        this.windLines.material.opacity = speedFactor * 0.7;
         this.windLines.position.copy(this.camera.position);
-        
-        for (let i = 0; i < 30; i++) {
+        const count = posAttr.count / 2;
+        for (let i = 0; i < count; i++) {
             const idx = i * 6;
-            _vTemp.set(posAttr.array[idx], posAttr.array[idx+1], posAttr.array[idx+2]);
-            if (_vTemp.z > 100) {
-                posAttr.array[idx] = (Math.random()-0.5)*400;
-                posAttr.array[idx+1] = (Math.random()-0.5)*300;
-                posAttr.array[idx+2] = -400 - Math.random()*600;
-                posAttr.array[idx+3] = posAttr.array[idx];
-                posAttr.array[idx+4] = posAttr.array[idx+1];
-                posAttr.array[idx+5] = posAttr.array[idx+2] + 50;
-            } else {
-                const scrollSpeed = 30 + (this.player.currentSpeed / 10);
-                posAttr.array[idx+2] += scrollSpeed;
-                posAttr.array[idx+5] += scrollSpeed;
+            posAttr.array[idx+2] += 20; posAttr.array[idx+5] += 20;
+            if (posAttr.array[idx+2] > 100) {
+                posAttr.array[idx] = (Math.random()-0.5)*600; posAttr.array[idx+1] = (Math.random()-0.5)*300; posAttr.array[idx+2] = -800 - Math.random()*500;
+                posAttr.array[idx+3] = posAttr.array[idx]; posAttr.array[idx+4] = posAttr.array[idx+1]; posAttr.array[idx+5] = posAttr.array[idx+2] + 100;
             }
         }
         posAttr.needsUpdate = true;
@@ -282,12 +266,9 @@ class Game {
         if (this.audioListener.context.state === 'suspended') await this.audioListener.context.resume();
         this.player = new Player(this.scene, this.camera, 'f4f');
         await this.player.init();
-        
-        // [Snippet 완벽 이식] 카메라-비행기 상대 위치 및 구도
         this.camera.position.set(0, 1000, 0); 
-        this.player.planeGroup.position.set(0, -120, -350); // Snippet 값으로 완전 복구
+        this.player.planeGroup.position.set(0, -120, -350);
         this.camera.add(this.player.planeGroup);
-
         this.setupSpeedLines(this.camera.position);
         document.getElementById('title-screen').style.display = 'none';
         document.getElementById('game-ui').style.display = 'block';
@@ -306,11 +287,8 @@ class Game {
     }
 
     onWindowResize() {
-        const h = window.innerHeight;
-        const w = h * (9 / 16);
-        this.renderer.setSize(w, h);
-        this.camera.aspect = 9 / 16;
-        this.camera.updateProjectionMatrix();
+        const h = window.innerHeight; const w = h * (9 / 16);
+        this.renderer.setSize(w, h); this.camera.aspect = 9 / 16; this.camera.updateProjectionMatrix();
     }
 
     animate() {
@@ -320,53 +298,120 @@ class Game {
         this.lastTime = now;
         
         if (this.isGameStarted && this.player) {
+            const axes = this.input.getAxis();
             const isFiring = this.input.isFiringUI || this.input.isPressed('KeyF');
             this.input.update(deltaTime); 
             
-            // [World Space Rail Mode] 월드 좌표 기준 정방향 전진
-            const moveSpeed = this.player.currentSpeed / 3.6;
-            this.camera.position.z -= moveSpeed * deltaTime; 
-            
-            this.player.update(this.input, deltaTime); 
-            
-            // [After Burner Style] 플레이어 뱅크(Roll)에 연동된 카메라 뱅킹
-            const targetCamBank = -this.player.currentRoll * 0.15;
-            this.camera.rotation.z = THREE.MathUtils.lerp(this.camera.rotation.z, targetCamBank, 0.1);
-            
-            this.updateCameraShake(deltaTime);
-            this.updateSpeedLines();
-            
-            if (this.environment) {
-                this.environment.update(deltaTime, 0, this.camera.position);
+            // 1. 전진 방향 (직선 레일)
+            const speedMultiplier = 20.0; 
+            const moveSpeed = (this.player.currentSpeed / 3.6) * speedMultiplier;
+            this.camera.position.z -= moveSpeed * deltaTime;
+
+            // 2. 실제 고도 상승/하강
+            const climbSpeed = 500;
+            this.camera.position.y -= axes.y * climbSpeed * deltaTime;
+
+            // 3. 고도 제한 및 경고 (상한 5000m / 하한 50m)
+            const actualAlt = Math.floor(this.camera.position.y - 120);
+            const warningEl = document.getElementById('alt-warning');
+            const timerEl = document.getElementById('alt-timer');
+            const warningText = warningEl ? warningEl.querySelector('p') : null;
+
+            if (actualAlt > 5000 || actualAlt < 50) {
+                if (!this.altWarningActive) {
+                    this.altWarningActive = true;
+                    this.altWarningTimer = 10.0;
+                    if (warningEl) warningEl.style.display = 'block';
+                }
+                this.altWarningTimer -= deltaTime;
+                if (timerEl) timerEl.innerText = Math.max(0, Math.ceil(this.altWarningTimer));
+                
+                if (warningText) {
+                    warningText.innerText = actualAlt > 5000 ? "5000m 이하로 하강하세요!" : "고도를 높이세요! 저고도 위험!";
+                }
+
+                if (this.altWarningTimer <= 0) {
+                    alert(actualAlt > 5000 ? "STALL: 고도 제한 초과!" : "CRASH: 저고도 비행 금지!");
+                    location.reload();
+                }
+            } else {
+                if (this.altWarningActive) {
+                    this.altWarningActive = false;
+                    if (warningEl) warningEl.style.display = 'none';
+                }
             }
+
+            // 4. 바다 충돌 (기체 고도 0m 기준)
+            if (actualAlt <= 0) {
+                this.createExplosion(new THREE.Vector3(this.camera.position.x, 0, this.camera.position.z - 350));
+                this.isGameStarted = false; alert("CRASH: 바다 충돌!"); location.reload();
+            }
+
+            this.player.update(this.input, deltaTime); 
+            this.updateLockOn(); this.updateCameraShake(deltaTime); this.updateSpeedLines();
+            if (this.environment) this.environment.update(deltaTime, 0, this.camera.position);
             
             this.spawnTimer += deltaTime;
-            if (this.spawnTimer > 1.5 && this.activeEnemies.length < 5) {
-                this.spawnRailEnemy();
-                this.spawnTimer = 0;
-            }
+            if (this.spawnTimer > 1.5 && this.activeEnemies.length < 5) { this.spawnRailEnemy(); this.spawnTimer = 0; }
 
             for (let i = this.activeEnemies.length - 1; i >= 0; i--) {
                 const u = this.activeEnemies[i];
                 if (u.active) {
                     u.update(this.camera.position);
-                    if (u.mesh.position.z > this.camera.position.z + 1000) {
-                        u.active = false;
-                        this.activeEnemies.splice(i, 1);
-                    }
+                    if (u.mesh.position.z > this.camera.position.z + 1000) { u.active = false; this.activeEnemies.splice(i, 1); }
                 } else { this.activeEnemies.splice(i, 1); }
             }
 
             if (isFiring && now - this.lastFireTime > this.player.fireRate) {
                 const shots = this.player.fire();
-                shots.forEach(s => this.playerBullets.push(new Bullet(this.scene, s.position, s.direction, { speed: 800 })));
+                shots.forEach(s => {
+                    // [수정] 총알 방향을 비행기가 향하는 정면(World -Z)으로 보정
+                    const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(this.player.planeGroup.quaternion);
+                    this.playerBullets.push(new Bullet(this.scene, s.position, dir, { speed: 2000 }));
+                });
                 if (this.sounds.gun && !this.sounds.gun.isPlaying) this.sounds.gun.play();
                 this.lastFireTime = now;
             }
             this.updateBullets(deltaTime); this.updateExplosions(deltaTime);
             if (now - this.lastHudUpdate > 100) { this.updateHUD(); this.lastHudUpdate = now; }
+
+            // 5. 건사이트 조작 (상하 가동 범위 최적화: 화면 절반 이하로 내려가지 않도록 제한)
+            const maxSightX = 170; 
+            const maxSightY_Up = 380; // 위로는 넓게
+            const maxSightY_Down = 0; // [사용자 요청] 화면 수직 절반(중앙 0)까지만 내려옴
+            
+            const clampedSightX = THREE.MathUtils.clamp(axes.x * 250, -maxSightX, maxSightX);
+            const clampedSightY = THREE.MathUtils.clamp(axes.y * 450, -maxSightY_Up, maxSightY_Down);
+            
+            const hudEl = document.getElementById('central-hud');
+            if (hudEl) {
+                hudEl.style.transform = `translate(calc(-50% + ${clampedSightX}px), calc(-50% + ${clampedSightY}px)) ${this.lockTarget ? 'scale(1.1)' : 'scale(1)'}`;
+                hudEl.style.backgroundColor = this.lockTarget ? 'rgba(255, 0, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)';
+            }
         }
         this.renderer.render(this.scene, this.camera);
+    }
+
+    updateLockOn() {
+        this.lockTarget = null; let closestDist = Infinity;
+        this.activeEnemies.forEach(u => {
+            if (!u.active) return;
+            const relPos = _vTemp.copy(u.mesh.position).applyMatrix4(_mRadar.copy(this.camera.matrixWorld).invert());
+            if (relPos.z < 0 && relPos.z > -5000) {
+                const screenDist = Math.sqrt(relPos.x * relPos.x + relPos.y * relPos.y);
+                if (screenDist < 150) {
+                    const dist = u.mesh.position.distanceTo(this.camera.position);
+                    if (dist < closestDist) { closestDist = dist; this.lockTarget = u; }
+                }
+            }
+        });
+        this.activeEnemies.forEach(u => { u.mesh.scale.setScalar(u === this.lockTarget ? 2.0 : 1.0); });
+    }
+
+    handleFire() {
+        if (this.lockTarget) { this.createExplosion(this.lockTarget.mesh.position); this.lockTarget.active = false; }
+        else { this.player.fire().forEach(s => this.playerBullets.push(new Bullet(this.scene, s.position, s.direction, { speed: 1200 }))); }
+        if (this.sounds.gun && !this.sounds.gun.isPlaying) this.sounds.gun.play();
     }
 
     spawnRailEnemy() {
@@ -381,9 +426,7 @@ class Game {
             const b = this.playerBullets[i]; b.update(deltaTime);
             if (b.active) {
                 for (const u of this.activeEnemies) {
-                    if (u.active && b.mesh.position.distanceTo(u.mesh.position) < 120) {
-                        this.createExplosion(u.mesh.position); u.active = false; b.destroy(); break;
-                    }
+                    if (u.active && b.mesh.position.distanceTo(u.mesh.position) < 120) { this.createExplosion(u.mesh.position); u.active = false; b.destroy(); break; }
                 }
             }
             if (!b.active) this.playerBullets.splice(i, 1);
@@ -393,15 +436,12 @@ class Game {
     createExplosion(pos) {
         const mesh = new THREE.Mesh(EXPLOSION_GEO, EXPLOSION_MAT);
         mesh.position.copy(pos); mesh.scale.setScalar(15); this.scene.add(mesh);
-        this.explosions.push({ mesh, life: 1.0 }); 
-        this.triggerHitFlash();
-        this.triggerShake(5, 0.2);
+        this.explosions.push({ mesh, life: 1.0 }); this.triggerHitFlash(); this.triggerShake(5, 0.2);
     }
 
     updateExplosions(deltaTime) {
         for (let i = this.explosions.length - 1; i >= 0; i--) {
-            const exp = this.explosions[i];
-            exp.life -= deltaTime * 2.0; exp.mesh.scale.setScalar(exp.mesh.scale.x + deltaTime * 150);
+            const exp = this.explosions[i]; exp.life -= deltaTime * 2.0; exp.mesh.scale.setScalar(exp.mesh.scale.x + deltaTime * 150);
             if (exp.life <= 0) { this.scene.remove(exp.mesh); this.explosions.splice(i, 1); }
         }
     }
@@ -413,37 +453,13 @@ class Game {
 
     updateHUD() {
         if (!this.player) return;
-        const alt = Math.floor(this.camera.position.y);
-        const speed = Math.floor(this.player.currentSpeed);
-        const hpEl = document.getElementById('val-hp');
-        const spdEl = document.getElementById('speed-val');
-        const altEl = document.getElementById('alt-val');
-        const unitsEl = document.getElementById('val-units');
-        if (hpEl) hpEl.innerText = Math.floor(this.player.hp);
-        if (altEl) altEl.innerText = Math.max(0, alt);
-        if (spdEl) spdEl.innerText = speed + "km/h";
-        if (unitsEl) unitsEl.innerText = this.activeEnemies.length;
-        const spdCentral = document.getElementById('speed-val-central');
-        const altCentral = document.getElementById('alt-val-central');
-        if (altCentral) altCentral.innerText = Math.max(0, alt);
-        if (spdCentral) spdCentral.innerText = speed;
-        this.updateRadar();
-    }
-
-    updateRadar() {
-        if (!this.radar.ctx || !this.player) return;
-        const ctx = this.radar.ctx; ctx.clearRect(0, 0, 140, 140);
-        ctx.beginPath(); ctx.arc(70, 70, 68, 0, Math.PI*2); ctx.strokeStyle = 'rgba(0, 255, 0, 0.4)'; ctx.stroke();
-        _mRadar.copy(this.camera.matrixWorld).invert();
-        this.activeEnemies.forEach(u => {
-            if (!u.active) return;
-            _vRadar.copy(u.mesh.position).applyMatrix4(_mRadar);
-            if (Math.sqrt(_vRadar.x*_vRadar.x + _vRadar.z*_vRadar.z) < 8000) {
-                const scale = 60 / 8000;
-                ctx.beginPath(); ctx.arc(70 + _vRadar.x * scale, 70 + _vRadar.z * scale, 4, 0, Math.PI*2);
-                ctx.fillStyle = _vRadar.y > 50 ? '#fff' : (_vRadar.y < -50 ? '#900' : '#f00'); ctx.fill();
-            }
-        });
+        const actualAlt = Math.floor(this.camera.position.y - 120);
+        document.getElementById('val-hp').innerText = Math.floor(this.player.hp);
+        document.getElementById('alt-val').innerText = Math.max(0, actualAlt) + "m (Z: " + Math.floor(this.camera.position.z) + ")";
+        document.getElementById('speed-val').innerText = Math.floor(this.player.currentSpeed) + "km/h";
+        document.getElementById('val-units').innerText = this.activeEnemies.length;
+        document.getElementById('alt-val-central').innerText = Math.max(0, actualAlt);
+        document.getElementById('speed-val-central').innerText = Math.floor(this.player.currentSpeed);
     }
 }
 const game = new Game();

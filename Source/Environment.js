@@ -7,7 +7,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 /**
  * [Module] EnvironmentManager
- * 제공된 소스 코드의 설정을 그대로 1:1 이식합니다. (인위적 보정 제거)
+ * 정적 월드 마커와 물리적 이동감을 제공하는 환경 관리자입니다.
  */
 export class EnvironmentManager {
     constructor(scene) {
@@ -15,9 +15,11 @@ export class EnvironmentManager {
         this.water = null;
         this.sky = null;
         this.clouds = [];
+        this.markers = []; // [추가] 정적 월드 마커 (부표/부유물)
         this.cloudCount = 20; 
         this.cloudModel = null;
         this.sunPos = new THREE.Vector3();
+        this.lastCamZ = 0;
         
         this.init();
     }
@@ -34,6 +36,9 @@ export class EnvironmentManager {
 
         // 4. Clouds (최소화 배치)
         await this.setupClouds();
+
+        // 5. Markers (이동감 부여용 부유물)
+        this.setupMarkers();
     }
 
     setupSky() {
@@ -103,7 +108,7 @@ export class EnvironmentManager {
         const rangeX = 20000;
         const rangeZ = 40000;
         const x = (Math.random() - 0.5) * rangeX;
-        const z = isInitial ? (Math.random() - 0.5) * rangeZ : -rangeZ;
+        const z = isInitial ? (Math.random() - 0.5) * rangeZ : this.lastCamZ - rangeZ;
         const y = 1000 + Math.random() * 1000;
         
         cloud.position.set(x, y, z);
@@ -112,12 +117,33 @@ export class EnvironmentManager {
         cloud.rotation.y = Math.random() * Math.PI * 2;
     }
 
+    setupMarkers() {
+        const markerGeo = new THREE.BoxGeometry(40, 2, 40);
+        const markerMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        for (let i = 0; i < 50; i++) {
+            const marker = new THREE.Mesh(markerGeo, markerMat);
+            this.resetMarker(marker, true);
+            this.scene.add(marker);
+            this.markers.push(marker);
+        }
+    }
+
+    resetMarker(marker, isInitial = false) {
+        const rangeX = 8000;
+        const rangeZ = 15000;
+        const x = (Math.random() - 0.5) * rangeX;
+        const z = isInitial ? -(Math.random() * rangeZ) : this.lastCamZ - rangeZ;
+        marker.position.set(x, 1, z);
+    }
+
     update(deltaTime, worldZ, cameraPos) {
+        this.lastCamZ = cameraPos.z;
+
         if (this.water) {
-            // 소스 그대로 시간만 증가 (초당 1/60 속도 감성)
-            this.water.material.uniforms['time'].value += deltaTime;
+            // 시간 기반 애니메이션
+            this.water.material.uniforms['time'].value += deltaTime * 0.5;
             
-            // 바다가 카메라를 따라오게만 설정
+            // 바다가 카메라를 따라오게 설정 (무한 평면 효과)
             this.water.position.x = cameraPos.x;
             this.water.position.z = cameraPos.z; 
         }
@@ -128,9 +154,15 @@ export class EnvironmentManager {
 
         this.clouds.forEach(cloud => {
             const distZ = cloud.position.z - cameraPos.z;
-            if (distZ > 1000) {
+            if (distZ > 5000) {
                 this.resetCloud(cloud);
-                cloud.position.z = cameraPos.z - 15000;
+            }
+        });
+
+        // 마커 업데이트 (지나친 마커는 앞으로 재배치)
+        this.markers.forEach(marker => {
+            if (marker.position.z > cameraPos.z + 2000) {
+                this.resetMarker(marker);
             }
         });
     }

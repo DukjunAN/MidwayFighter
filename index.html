@@ -47,26 +47,62 @@
 
         #radar-container { position: absolute; top: 20px; right: 20px; width: 120px; height: 120px; background: rgba(0, 30, 0, 0.6); border: 2px solid #0f0; border-radius: 50%; overflow: hidden; z-index: 600; }
         
-        /* Central Reflex HUD (크기 축소) */
+        /* Central Reflex HUD (볼록렌즈 유리 효과) */
         #central-hud {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 240px; height: 240px; border: 2px solid rgba(57, 255, 20, 0.4); border-radius: 50%;
-            pointer-events: none; display: flex; align-items: center; justify-content: space-between; z-index: 100;
+            width: 240px; height: 240px; 
+            border: 3px solid rgba(57, 255, 20, 0.4); border-radius: 50%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.02) 70%, rgba(0,0,0,0.2) 100%);
+            backdrop-filter: blur(1.5px);
+            box-shadow: inset 0 0 30px rgba(57,255,20,0.05), 0 0 20px rgba(57,255,20,0.1);
+            pointer-events: none; z-index: 100;
+            transition: border-color 0.2s, background-color 0.2s, transform 0.1s ease-out;
         }
-        .hud-value {
-            color: #39FF14; font-family: 'Courier New', Courier, monospace; font-weight: bold;
-            text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+        
+        /* 중앙 조준점 */
+        #central-hud::after {
+            content: ''; position: absolute; top: 50%; left: 50%; width: 10px; height: 10px;
+            border: 1px solid rgba(57, 255, 20, 0.8); border-radius: 50%; transform: translate(-50%, -50%);
         }
-        #alt-display { font-size: 26px; margin-left: -60px; text-align: right; width: 110px; }
-        #speed-display { font-size: 26px; margin-right: -60px; text-align: left; width: 110px; }
-        .label { font-size: 12px; display: block; opacity: 0.8; margin-bottom: 3px; }
+
+        /* 건사이트 정보 박스 공통 스타일 */
+        .hud-info-small {
+            position: absolute;
+            background: #ffffff; color: #000000; border: 2px solid #00ff00;
+            padding: 2px 8px; border-radius: 4px; font-family: monospace; font-weight: bold;
+            font-size: 14px; white-space: nowrap;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+            z-index: 110;
+        }
+        /* 고도: 6시 30분 방향 */
+        #hud-alt-box { bottom: -12px; left: 10%; transform: none; }
+        /* 속도: 5시 30분 방향 */
+        #hud-speed-box { bottom: -12px; right: 10%; transform: none; }
+        
+        .hud-label-small { color: #008800; font-size: 10px; margin-right: 4px; }
 
         #hit-flash { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,0,0,0.3); pointer-events: none; display: none; z-index: 1000; }
         #hit-flash.active { display: block; }
+
+        /* 고도 경고 UI */
+        #alt-warning {
+            position: absolute; top: 20%; left: 50%; transform: translateX(-50%);
+            width: 80%; padding: 20px; background: rgba(255, 0, 0, 0.8);
+            color: #fff; text-align: center; border: 4px solid #fff;
+            font-family: 'Malgun Gothic', sans-serif; font-weight: bold;
+            z-index: 2000; display: none;
+        }
+        #alt-warning h2 { margin: 0; font-size: 24px; }
+        #alt-warning p { margin: 10px 0 0 0; font-size: 18px; }
     </style>
 </head>
 <body>
     <div id="game-container">
+        <div id="alt-warning">
+            <h2>ALITIUDE WARNING!</h2>
+            <p>5000m 이하로 하강하세요!</p>
+            <p>추락까지 <span id="alt-timer">10</span>초</p>
+        </div>
         <div id="title-screen">
             <h1>미드웨이 전투</h1>
             <div id="subtitle">BATTLE OF MIDWAY</div>
@@ -82,13 +118,14 @@
 
         <div id="game-ui">
             <div id="central-hud">
-                <div id="alt-display" class="hud-value"><span class="label">ALT</span><span id="alt-val-central">0</span><small>m</small></div>
-                <div id="speed-display" class="hud-value"><span class="label">SPEED</span><span id="speed-val-central">0</span></div>
-            </div>
-
-            <div id="radar-container">
-                <canvas id="radar-canvas" width="140" height="140"></canvas>
-                <div style="position: absolute; top: 50%; left: 50%; width: 4px; height: 4px; background: #fff; border-radius: 50%; transform: translate(-50%, -50%);"></div>
+                <!-- 고도 정보 (7시 방향) -->
+                <div id="hud-alt-box" class="hud-info-small">
+                    <span class="hud-label-small">ALT</span><span id="alt-val-central">0</span>m
+                </div>
+                <!-- 속도 정보 (4시 방향) -->
+                <div id="hud-speed-box" class="hud-info-small">
+                    <span class="hud-label-small">SPD</span><span id="speed-val-central">0</span>
+                </div>
             </div>
 
             <div id="top-left-ui">

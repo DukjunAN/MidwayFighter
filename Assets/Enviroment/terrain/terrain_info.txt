@@ -7,4 +7,6 @@ Day#22: Elba island
 JuanG3D
 
 
+Map PUBG (Erangel) 3D Model Avatar of burunduk Konstantin
 
+map_pubg_erangel.glb

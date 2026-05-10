@@ -30,7 +30,8 @@ export class Enemy extends BaseAircraft {
         this.state = ENEMY_STATE.SPAWN;
         
         this.targetPos = new THREE.Vector3(0, 0, 0);
-        this.speed = (config.stats.speed || 1.2) * 0.15;
+        // [수정] 플레이어의 빠른 속도에 맞춰 적기 속도 대폭 상향
+        this.speed = (config.stats.speed || 1.2) * 5.0; 
         this.baseSpeed = this.speed;
         
         this.hp = config.stats.hp;

@@ -68,32 +68,44 @@ export class Player extends BaseAircraft {
 
         this.handleSpeed(input, deltaTime);
 
-        const axes = input.getAxis();
-        // 보간 계수 (Rail Mode용 쾌속 반응)
-        const lerpFactor = 1 - Math.pow(1 - 0.1, deltaTime * 60);
+        const axes = input.getAxis(); // x: 좌우, y: 상하 (-1 ~ 1)
+        // [골든 세팅] 묵직한 조작감을 위해 0.01 보간 사용
+        const lerpFactor = 0.01;
+
+        // --- [상하 조작: 고정형 레일 방식] ---
+        // 기체는 화면 하단(-120)을 기준으로 상하 범위를 아주 좁게 제한하여 
+        // 카메라 시야와 항상 일정한 간격을 유지하게 합니다.
+        const planeTargetY = -120 + (axes.y * 30); // 상하 가동폭 최소화 (±30)
+        this.planeGroup.position.y += (planeTargetY - this.planeGroup.position.y) * lerpFactor;
+
+        // 상하 카메라는 건사이트가 기체 코앞에 붙어있는 느낌을 주도록 
+        // 기체 위치보다 약간 높은 곳을 고정적으로 바라봅니다.
+        const lookAtY = planeTargetY + 60; // 기체보다 항상 60유닛 위를 주시 (겹침 방지)
+
+        // --- [좌우 조작: 다이내믹 방식 유지] ---
+        const planeTargetX = axes.x * 120; 
+        this.planeGroup.position.x += (planeTargetX - this.planeGroup.position.x) * lerpFactor;
         
-        this.currentRoll += (axes.x - this.currentRoll) * lerpFactor;
-        this.currentPitch += (axes.y - this.currentPitch) * lerpFactor;
+        const lookAtX = axes.x * 250; 
+        // ------------------------------------------
 
-        // [Rail Mode] 화면 내 이동 제한 (Box Constraints)
-        // Snippet 기준점인 Y = -120 을 중심으로 가동 범위 설정
-        const targetX = axes.x * 120; // 좌우 기동 범위 확대
-        const targetY = -120 + axes.y * 60; // 기본 위치(-120), 상하 범위 ±60
-
-        this.planeGroup.position.x += (targetX - this.planeGroup.position.x) * lerpFactor;
-        this.planeGroup.position.y += (targetY - this.planeGroup.position.y) * lerpFactor;
-
-        // 회전 순서 및 기울기 극대화 (Rail Mode)
-        const maxRollRad = Math.PI / 3; // 60도
-        const maxPitchRad = Math.PI / 9; // 기수 상하 각도 제한
-        
-        const targetEuler = new THREE.Euler(
-            this.currentPitch * maxPitchRad, 
-            -this.currentRoll * 0.2, // Yaw 살짝만 가미
-            -this.currentRoll * maxRollRad,
-            'YXZ'
+        // 최종 카메라 주시 포인트 적용 (월드 좌표 기준 오프셋)
+        const targetLookAt = new THREE.Vector3(
+            this.camera.position.x + lookAtX, 
+            this.camera.position.y + lookAtY, 
+            this.camera.position.z - 1000
         );
-        this.planeGroup.quaternion.setFromEuler(targetEuler);
+        this.camera.lookAt(targetLookAt);
+
+        // [회전 및 기울기 설정]
+        const maxRollRad = Math.PI / 3;    // 좌우 기울기 60도
+        const maxPitchRad = Math.PI / 18;  // 상하 각도는 10도 내외로 극소화 (시야 확보)
+
+        this.currentRoll = THREE.MathUtils.lerp(this.currentRoll, -axes.x * maxRollRad, lerpFactor);
+        this.currentPitch = THREE.MathUtils.lerp(this.currentPitch, axes.y * maxPitchRad, lerpFactor);
+        this.currentYaw = THREE.MathUtils.lerp(this.currentYaw, -axes.x * 0.1, lerpFactor);
+
+        this.planeGroup.rotation.set(-this.currentPitch, this.currentYaw, this.currentRoll, 'YXZ');
 
         // 회피 기동(Barrel Roll) 애니메이션을 비행기 메쉬에만 적용
         if (this.evadeRoll > 0) {
@@ -108,9 +120,9 @@ export class Player extends BaseAircraft {
         const propellerSpeed = 0.3 + (this.currentSpeed / 500) * 1.5;
         super.update(propellerSpeed, input.isFiringUI);
 
-        // 시야각 연출
+        // 시야각 연출 (속도감 체감 강화)
         const speedFactor = (this.currentSpeed - this.minSpeed) / (this.maxSpeed - this.minSpeed);
-        const targetFOV = 75 + speedFactor * 20; 
+        const targetFOV = 75 + speedFactor * 35; 
         this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, targetFOV, 0.1);
         this.camera.updateProjectionMatrix();
     }
