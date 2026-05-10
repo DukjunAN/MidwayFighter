@@ -299,7 +299,16 @@ class Game {
         
         if (this.isGameStarted && this.player) {
             const axes = this.input.getAxis();
-            const isFiring = this.input.isFiringUI || this.input.isPressed('KeyF');
+            const isFiringKey = this.input.isPressed('KeyF');
+            const isFiring = this.input.isFiringUI || isFiringKey;
+            
+            // [추가] 키보드 F키와 UI 버튼 시각적 동기화
+            const fireBtn = document.getElementById('ui-fire-btn');
+            if (fireBtn) {
+                if (isFiringKey) fireBtn.classList.add('pressing');
+                else if (!this.input.isFiringUI) fireBtn.classList.remove('pressing');
+            }
+
             this.input.update(deltaTime); 
             
             // 1. 전진 방향 (직선 레일)
@@ -362,23 +371,10 @@ class Game {
                 } else { this.activeEnemies.splice(i, 1); }
             }
 
-            if (isFiring && now - this.lastFireTime > this.player.fireRate) {
-                const shots = this.player.fire();
-                shots.forEach(s => {
-                    // [수정] 총알 방향을 비행기가 향하는 정면(World -Z)으로 보정
-                    const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(this.player.planeGroup.quaternion);
-                    this.playerBullets.push(new Bullet(this.scene, s.position, dir, { speed: 2000 }));
-                });
-                if (this.sounds.gun && !this.sounds.gun.isPlaying) this.sounds.gun.play();
-                this.lastFireTime = now;
-            }
-            this.updateBullets(deltaTime); this.updateExplosions(deltaTime);
-            if (now - this.lastHudUpdate > 100) { this.updateHUD(); this.lastHudUpdate = now; }
-
             // 5. 건사이트 조작 (상하 가동 범위 최적화: 화면 절반 이하로 내려가지 않도록 제한)
             const maxSightX = 170; 
             const maxSightY_Up = 380; // 위로는 넓게
-            const maxSightY_Down = 0; // [사용자 요청] 화면 수직 절반(중앙 0)까지만 내려옴
+            const maxSightY_Down = 0; // 화면 수직 절반(중앙 0)까지만 내려옴
             
             const clampedSightX = THREE.MathUtils.clamp(axes.x * 250, -maxSightX, maxSightX);
             const clampedSightY = THREE.MathUtils.clamp(axes.y * 450, -maxSightY_Up, maxSightY_Down);
@@ -388,6 +384,27 @@ class Game {
                 hudEl.style.transform = `translate(calc(-50% + ${clampedSightX}px), calc(-50% + ${clampedSightY}px)) ${this.lockTarget ? 'scale(1.1)' : 'scale(1)'}`;
                 hudEl.style.backgroundColor = this.lockTarget ? 'rgba(255, 0, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)';
             }
+
+            // [핵심] 건사이트가 가리키는 월드 상의 목표 지점 계산 (약 3000유닛 앞)
+            const targetWorldPoint = new THREE.Vector3(
+                this.camera.position.x + (clampedSightX * 6),
+                this.camera.position.y - (clampedSightY * 3.5),
+                this.camera.position.z - 3000
+            );
+
+            if (isFiring && now - this.lastFireTime > this.player.fireRate) {
+                const shots = this.player.fire();
+                shots.forEach(s => {
+                    // 총구 위치(s.position)에서 조준 포인트(targetWorldPoint)를 향하는 벡터 계산
+                    const dir = new THREE.Vector3().subVectors(targetWorldPoint, s.position).normalize();
+                    this.playerBullets.push(new Bullet(this.scene, s.position, dir, { speed: 2500 }));
+                });
+                if (this.sounds.gun && !this.sounds.gun.isPlaying) this.sounds.gun.play();
+                this.lastFireTime = now;
+            }
+
+            this.updateBullets(deltaTime); this.updateExplosions(deltaTime);
+            if (now - this.lastHudUpdate > 100) { this.updateHUD(); this.lastHudUpdate = now; }
         }
         this.renderer.render(this.scene, this.camera);
     }

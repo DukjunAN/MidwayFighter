@@ -47,14 +47,14 @@
 
         #radar-container { position: absolute; top: 20px; right: 20px; width: 120px; height: 120px; background: rgba(0, 30, 0, 0.6); border: 2px solid #0f0; border-radius: 50%; overflow: hidden; z-index: 600; }
         
-        /* Central Reflex HUD (볼록렌즈 유리 효과) */
+        /* Central Reflex HUD (시인성 강화된 투명 유리 효과) */
         #central-hud {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             width: 240px; height: 240px; 
-            border: 3px solid rgba(57, 255, 20, 0.4); border-radius: 50%;
-            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.02) 70%, rgba(0,0,0,0.2) 100%);
-            backdrop-filter: blur(1.5px);
-            box-shadow: inset 0 0 30px rgba(57,255,20,0.05), 0 0 20px rgba(57,255,20,0.1);
+            border: 3px solid rgba(57, 255, 20, 0.5); border-radius: 50%;
+            background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 80%, rgba(0,0,0,0) 100%);
+            backdrop-filter: blur(0.5px); /* 블러를 최소화하여 적기 시인성 확보 */
+            box-shadow: inset 0 0 40px rgba(57,255,20,0.05), 0 0 10px rgba(57,255,20,0.1);
             pointer-events: none; z-index: 100;
             transition: border-color 0.2s, background-color 0.2s, transform 0.1s ease-out;
         }

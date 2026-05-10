@@ -118,7 +118,9 @@ export class Player extends BaseAircraft {
         }
 
         const propellerSpeed = 0.3 + (this.currentSpeed / 500) * 1.5;
-        super.update(propellerSpeed, input.isFiringUI);
+        // [수정] UI 버튼 뿐만 아니라 키보드 F키 상태도 함께 전달하여 뮤즐 플래시 활성화
+        const isFiring = input.isFiringUI || input.isPressed('KeyF');
+        super.update(propellerSpeed, isFiring);
 
         // 시야각 연출 (속도감 체감 강화)
         const speedFactor = (this.currentSpeed - this.minSpeed) / (this.maxSpeed - this.minSpeed);

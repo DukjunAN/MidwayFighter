@@ -4,10 +4,15 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 const modelCache = new Map();
 
 const SHARED_GEOS = {
-    muzzle: new THREE.CylinderGeometry(0, 0.08, 0.8, 6)
+    muzzle: new THREE.CylinderGeometry(0, 0.5, 3.0, 6) // 크기를 약 5~6배 키움
 };
 const SHARED_MATS = {
-    muzzle: new THREE.MeshBasicMaterial({ color: 0xffcc00, transparent: true, opacity: 0.8 })
+    muzzle: new THREE.MeshBasicMaterial({ 
+        color: 0xffaa00, 
+        transparent: true, 
+        opacity: 0.9,
+        blending: THREE.AdditiveBlending // 빛나는 효과 추가
+    })
 };
 
 export class BaseAircraft {
@@ -22,7 +27,7 @@ export class BaseAircraft {
         this.propellerAxis = config?.propeller?.axis || 'z';
         this.gunNames = config?.weapons?.main || [];
         this.muzzleOffset = config?.weapons?.muzzleOffset || 0;
-        this.muzzleScale = config?.weapons?.muzzleScale || 2.0; 
+        this.muzzleScale = config?.weapons?.muzzleScale || 4.0; // 기본 스케일 상향 (2.0 -> 4.0)
         this.fireReverse = config?.weapons?.fireReverse || false; 
         this.altitude = config?.altitude || 500;
 

@@ -15,7 +15,6 @@ export class EnvironmentManager {
         this.water = null;
         this.sky = null;
         this.clouds = [];
-        this.markers = []; // [추가] 정적 월드 마커 (부표/부유물)
         this.cloudCount = 20; 
         this.cloudModel = null;
         this.sunPos = new THREE.Vector3();
@@ -36,9 +35,6 @@ export class EnvironmentManager {
 
         // 4. Clouds (최소화 배치)
         await this.setupClouds();
-
-        // 5. Markers (이동감 부여용 부유물)
-        this.setupMarkers();
     }
 
     setupSky() {
@@ -117,25 +113,6 @@ export class EnvironmentManager {
         cloud.rotation.y = Math.random() * Math.PI * 2;
     }
 
-    setupMarkers() {
-        const markerGeo = new THREE.BoxGeometry(40, 2, 40);
-        const markerMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-        for (let i = 0; i < 50; i++) {
-            const marker = new THREE.Mesh(markerGeo, markerMat);
-            this.resetMarker(marker, true);
-            this.scene.add(marker);
-            this.markers.push(marker);
-        }
-    }
-
-    resetMarker(marker, isInitial = false) {
-        const rangeX = 8000;
-        const rangeZ = 15000;
-        const x = (Math.random() - 0.5) * rangeX;
-        const z = isInitial ? -(Math.random() * rangeZ) : this.lastCamZ - rangeZ;
-        marker.position.set(x, 1, z);
-    }
-
     update(deltaTime, worldZ, cameraPos) {
         this.lastCamZ = cameraPos.z;
 
@@ -156,13 +133,6 @@ export class EnvironmentManager {
             const distZ = cloud.position.z - cameraPos.z;
             if (distZ > 5000) {
                 this.resetCloud(cloud);
-            }
-        });
-
-        // 마커 업데이트 (지나친 마커는 앞으로 재배치)
-        this.markers.forEach(marker => {
-            if (marker.position.z > cameraPos.z + 2000) {
-                this.resetMarker(marker);
             }
         });
     }
