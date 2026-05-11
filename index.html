@@ -16,6 +16,23 @@
             box-shadow: 0 0 50px rgba(0,0,0,0.5);
         }
 
+        #central-hud {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 320px; height: 320px; border: 2px solid rgba(57, 255, 20, 0.2); border-radius: 50%;
+            pointer-events: none; z-index: 100; display: none;
+        }
+        #reticle {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 30px; height: 30px; border: 2px solid #39FF14; border-radius: 50%; 
+            pointer-events: none; z-index: 110; display: none;
+        }
+        .hud-value {
+            position: absolute; color: #39FF14; font-family: 'Courier New', monospace; font-weight: bold;
+            text-shadow: 1px 1px 2px #000; font-size: 24px;
+        }
+        #hud-alt-box { bottom: 20px; left: -50px; }
+        #hud-speed-box { bottom: 20px; right: -50px; }
+
         #title-screen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: radial-gradient(circle, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.9) 100%);
@@ -37,54 +54,15 @@
         #bottom-left-ui { position: absolute; bottom: 40px; left: 30px; z-index: 600; display: flex; align-items: flex-end; gap: 30px; pointer-events: auto; }
         #bottom-right-ui { position: absolute; bottom: 40px; right: 30px; z-index: 600; display: flex; align-items: flex-end; pointer-events: auto; }
         
-        /* 고정식 조이스틱 (크기 축소) */
-        #ui-joystick-container { width: 110px; height: 110px; background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; position: relative; touch-action: none; }
-        #ui-joystick-handle { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 50px; height: 50px; background: rgba(255,255,255,0.4); border-radius: 50%; box-shadow: 0 0 10px rgba(0,0,0,0.5); pointer-events: none; }
+        #ui-joystick-container { width: 120px; height: 120px; background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.4); border-radius: 50%; position: relative; touch-action: none; }
+        #ui-joystick-handle { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 60px; height: 60px; background: rgba(255,255,255,0.5); border: 2px solid #fff; border-radius: 50%; pointer-events: none; }
         
-        #ui-fire-btn { width: 110px; height: 110px; background: rgba(255,255,255,0.1); border: 4px solid rgba(255,255,255,0.4); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; touch-action: none; }
-        #ui-fire-btn:active, #ui-fire-btn.pressing { background: rgba(255, 0, 0, 0.4); transform: scale(0.95); }
-        .bullet-icon { width: 80px; height: 80px; opacity: 0.8; transform: rotate(90deg); }
-
-        #radar-container { position: absolute; top: 20px; right: 20px; width: 120px; height: 120px; background: rgba(0, 30, 0, 0.6); border: 2px solid #0f0; border-radius: 50%; overflow: hidden; z-index: 600; }
-        
-        /* Central Reflex HUD (시인성 강화된 투명 유리 효과) */
-        #central-hud {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 240px; height: 240px; 
-            border: 3px solid rgba(57, 255, 20, 0.5); border-radius: 50%;
-            background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 80%, rgba(0,0,0,0) 100%);
-            backdrop-filter: blur(0.5px); /* 블러를 최소화하여 적기 시인성 확보 */
-            box-shadow: inset 0 0 40px rgba(57,255,20,0.05), 0 0 10px rgba(57,255,20,0.1);
-            pointer-events: none; z-index: 100;
-            transition: border-color 0.2s, background-color 0.2s, transform 0.1s ease-out;
-        }
-        
-        /* 중앙 조준점 */
-        #central-hud::after {
-            content: ''; position: absolute; top: 50%; left: 50%; width: 10px; height: 10px;
-            border: 1px solid rgba(57, 255, 20, 0.8); border-radius: 50%; transform: translate(-50%, -50%);
-        }
-
-        /* 건사이트 정보 박스 공통 스타일 */
-        .hud-info-small {
-            position: absolute;
-            background: #ffffff; color: #000000; border: 2px solid #00ff00;
-            padding: 2px 8px; border-radius: 4px; font-family: monospace; font-weight: bold;
-            font-size: 14px; white-space: nowrap;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.5);
-            z-index: 110;
-        }
-        /* 고도: 6시 30분 방향 */
-        #hud-alt-box { bottom: -12px; left: 10%; transform: none; }
-        /* 속도: 5시 30분 방향 */
-        #hud-speed-box { bottom: -12px; right: 10%; transform: none; }
-        
-        .hud-label-small { color: #008800; font-size: 10px; margin-right: 4px; }
+        #ui-fire-btn { width: 110px; height: 110px; background: rgba(255,0,0,0.5); border: 4px solid #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; font-weight: bold; font-size: 22px; touch-action: none; }
+        #ui-fire-btn:active, #ui-fire-btn.pressing { background: rgba(255,0,0,0.9); transform: scale(0.85); }
 
         #hit-flash { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,0,0,0.3); pointer-events: none; display: none; z-index: 1000; }
         #hit-flash.active { display: block; }
 
-        /* 고도 경고 UI */
         #alt-warning {
             position: absolute; top: 20%; left: 50%; transform: translateX(-50%);
             width: 80%; padding: 20px; background: rgba(255, 0, 0, 0.8);
@@ -92,8 +70,6 @@
             font-family: 'Malgun Gothic', sans-serif; font-weight: bold;
             z-index: 2000; display: none;
         }
-        #alt-warning h2 { margin: 0; font-size: 24px; }
-        #alt-warning p { margin: 10px 0 0 0; font-size: 18px; }
     </style>
 </head>
 <body>
@@ -118,15 +94,10 @@
 
         <div id="game-ui">
             <div id="central-hud">
-                <!-- 고도 정보 (7시 방향) -->
-                <div id="hud-alt-box" class="hud-info-small">
-                    <span class="hud-label-small">ALT</span><span id="alt-val-central">0</span>m
-                </div>
-                <!-- 속도 정보 (4시 방향) -->
-                <div id="hud-speed-box" class="hud-info-small">
-                    <span class="hud-label-small">SPD</span><span id="speed-val-central">0</span>
-                </div>
+                <div id="hud-alt-box" class="hud-value">ALT <span id="alt-val-central">0</span>m</div>
+                <div id="hud-speed-box" class="hud-value">SPD <span id="speed-val-central">0</span></div>
             </div>
+            <div id="reticle"></div>
 
             <div id="top-left-ui">
                 HP: <span id="val-hp">100</span> | SPEED: <span id="speed-val">0</span> km/h<br>
@@ -134,21 +105,13 @@
             </div>
 
             <div id="bottom-left-ui">
-                <div id="ui-joystick-container" style="width: 120px; height: 120px;">
-                    <div id="ui-joystick-handle" style="width: 50px; height: 50px;"></div>
+                <div id="ui-joystick-container">
+                    <div id="ui-joystick-handle"></div>
                 </div>
             </div>
 
             <div id="bottom-right-ui">
-                <div id="ui-fire-btn" style="width: 110px; height: 110px;">
-                    <svg class="bullet-icon" style="width: 80px; height: 80px;" viewBox="8 1 20 22">
-                        <g fill-opacity="0.5">
-                            <path d="M10,2L8.5,5H11.5L10,2M8.5,6V18H11.5V6H8.5M8.5,19V21A1,1 0 0,0 9.5,22H10.5A1,1 0 0,0 11.5,21V19H8.5Z" fill="white"/>
-                            <path d="M18,2L16.5,5H19.5L18,2M16.5,6V18H19.5V6H16.5M16.5,19V21A1,1 0 0,0 17.5,22H18.5A1,1 0 0,0 19.5,21V19H16.5Z" fill="white"/>
-                            <path d="M26,2L24.5,5H27.5L26,2M24.5,6V18H27.5V6H24.5M24.5,19V21A1,1 0 0,0 25.5,22H26.5A1,1 0 0,0 27.5,21V19H24.5Z" fill="white"/>
-                        </g>
-                    </svg>
-                </div>
+                <div id="ui-fire-btn">FIRE</div>
             </div>
         </div>
 

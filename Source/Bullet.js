@@ -8,14 +8,14 @@ import * as THREE from 'three';
 // 성능 최적화: 탄환 크기를 키우고(0.1 -> 0.8) 예광탄 효과를 위해 길게 설정
 const SHARED_BULLET_GEO = new THREE.CapsuleGeometry(0.8, 20.0, 4, 8); 
 
-// 재질 강화: Emissive(발광)를 사용하여 어떤 배경에서도 빛나게 설정
+// 재질 강화: 네온 옐로우(Neon Yellow)와 강한 발광(Emissive)을 적용하여 시인성 극대화
 const SHARED_BULLET_MAT = new THREE.MeshStandardMaterial({ 
     color: 0xffffff,
-    emissive: 0xffaa00, // 오렌지색 예광탄 빛
-    emissiveIntensity: 5.0,
+    emissive: 0xccff00, // [변경] 고가시성 네온 옐로우
+    emissiveIntensity: 10.0, // [강화] 발광 강도를 2배 높임
     transparent: true,
     opacity: 1.0,
-    blending: THREE.AdditiveBlending
+    blending: THREE.AdditiveBlending // 빛나는 효과 극대화
 });
 
 export class Bullet {

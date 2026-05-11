@@ -18,6 +18,7 @@ class Game {
         this.container = document.getElementById('game-container');
         this.scene = new THREE.Scene();
         this.camera = new THREE.PerspectiveCamera(75, 1080 / 1920, 10, 1000000);
+        // [변경] 시뮬레이션 소스의 회전 순서 YXZ 적용
         this.camera.rotation.order = 'YXZ';
         this.renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
         this.input = new Input();
@@ -37,11 +38,15 @@ class Game {
         this.sounds = { engine: null, gun: null };
         this.lockTarget = null;
 
-        // 고도 경고 관련
+        // [추가] 시뮬레이션 물리 변수
+        this.currentPitch = 0;
+        this.currentRoll = 0;
+        this.currentYaw = 0;
+        this.targetPitch = 0;
+        this.targetRoll = 0;
+
         this.altWarningActive = false;
         this.altWarningTimer = 10.0;
-
-        // 카메라 쉐이크
         this.shakeAmount = 0;
         this.shakeDuration = 0;
 
@@ -99,9 +104,7 @@ class Game {
             const y = (Math.random() - 0.5) * this.shakeAmount;
             this.camera.position.x += x;
             this.camera.position.y += y;
-            if (this.shakeDuration <= 0) {
-                this.shakeAmount = 0;
-            }
+            if (this.shakeDuration <= 0) this.shakeAmount = 0;
         }
     }
 
@@ -266,12 +269,20 @@ class Game {
         if (this.audioListener.context.state === 'suspended') await this.audioListener.context.resume();
         this.player = new Player(this.scene, this.camera, 'f4f');
         await this.player.init();
-        this.camera.position.set(0, 1000, 0); 
-        this.player.planeGroup.position.set(0, -120, -350);
+        
+        // [변경] 시뮬레이션 소스의 기체 배치 (Toy Model)
+        this.camera.position.set(0, 500, 1000); 
+        this.player.planeGroup.position.set(0, -60, -300); // 시뮬레이션 소스 좌표 적용
         this.camera.add(this.player.planeGroup);
+
         this.setupSpeedLines(this.camera.position);
         document.getElementById('title-screen').style.display = 'none';
         document.getElementById('game-ui').style.display = 'block';
+        
+        // [변경] 새로운 HUD 디자인 활성화
+        document.getElementById('central-hud').style.display = 'block';
+        document.getElementById('reticle').style.display = 'block';
+
         if (this.sounds.engine) this.sounds.engine.play();
         this.isGameStarted = true;
     }
@@ -284,6 +295,13 @@ class Game {
                 this.activeEnemies.push(unit); spawnedCount++; if (spawnedCount >= count) break;
             }
         }
+    }
+
+    spawnRailEnemy() {
+        const spawnZ = this.camera.position.z - (5000 + Math.random() * 3000);
+        const spawnX = this.camera.position.x + (Math.random() - 0.5) * 2000;
+        const spawnY = this.camera.position.y + (Math.random() - 0.5) * 1000;
+        this.spawnFromPool(spawnX, spawnY, spawnZ, 1);
     }
 
     onWindowResize() {
@@ -302,57 +320,39 @@ class Game {
             const isFiringKey = this.input.isPressed('KeyF');
             const isFiring = this.input.isFiringUI || isFiringKey;
             
-            // [추가] 키보드 F키와 UI 버튼 시각적 동기화
-            const fireBtn = document.getElementById('ui-fire-btn');
-            if (fireBtn) {
-                if (isFiringKey) fireBtn.classList.add('pressing');
-                else if (!this.input.isFiringUI) fireBtn.classList.remove('pressing');
-            }
-
             this.input.update(deltaTime); 
+
+            // [변경] 시뮬레이션 소스의 부드러운 스티어링 물리 엔진 통합
+            const lerpFactor = 1 - Math.pow(0.01, deltaTime); 
             
-            // 1. 전진 방향 (직선 레일)
-            const speedMultiplier = 20.0; 
+            this.targetRoll = axes.x * 0.4;
+            this.targetPitch = axes.y * 0.25;
+
+            this.currentPitch += (this.targetPitch - this.currentPitch) * lerpFactor * 3; 
+            this.currentRoll += (this.targetRoll - this.currentRoll) * lerpFactor * 3;
+            
+            // Roll(기울기)에 비례하여 Yaw(방향)가 변하는 정밀 비행
+            this.currentYaw -= this.currentRoll * deltaTime * 1.5;
+
+            // 카메라 회전 적용 (YXZ 순서)
+            this.camera.rotation.set(this.currentPitch, this.currentYaw, -this.currentRoll * 0.2, 'YXZ');
+            
+            // [변경] 카메라 전진 (바라보는 방향으로 이동)
+            const speedMultiplier = 50.0; 
             const moveSpeed = (this.player.currentSpeed / 3.6) * speedMultiplier;
-            this.camera.position.z -= moveSpeed * deltaTime;
+            this.camera.translateZ(-moveSpeed * deltaTime);
 
-            // 2. 실제 고도 상승/하강
-            const climbSpeed = 500;
-            this.camera.position.y -= axes.y * climbSpeed * deltaTime;
-
-            // 3. 고도 제한 및 경고 (상한 5000m / 하한 50m)
-            const actualAlt = Math.floor(this.camera.position.y - 120);
+            // 고도 제한 및 경고
+            const actualAlt = Math.floor(this.camera.position.y);
             const warningEl = document.getElementById('alt-warning');
-            const timerEl = document.getElementById('alt-timer');
-            const warningText = warningEl ? warningEl.querySelector('p') : null;
-
             if (actualAlt > 5000 || actualAlt < 50) {
-                if (!this.altWarningActive) {
-                    this.altWarningActive = true;
-                    this.altWarningTimer = 10.0;
-                    if (warningEl) warningEl.style.display = 'block';
-                }
-                this.altWarningTimer -= deltaTime;
-                if (timerEl) timerEl.innerText = Math.max(0, Math.ceil(this.altWarningTimer));
-                
-                if (warningText) {
-                    warningText.innerText = actualAlt > 5000 ? "5000m 이하로 하강하세요!" : "고도를 높이세요! 저고도 위험!";
-                }
-
-                if (this.altWarningTimer <= 0) {
-                    alert(actualAlt > 5000 ? "STALL: 고도 제한 초과!" : "CRASH: 저고도 비행 금지!");
-                    location.reload();
-                }
+                if (!this.altWarningActive) { this.altWarningActive = true; if (warningEl) warningEl.style.display = 'block'; }
             } else {
-                if (this.altWarningActive) {
-                    this.altWarningActive = false;
-                    if (warningEl) warningEl.style.display = 'none';
-                }
+                if (this.altWarningActive) { this.altWarningActive = false; if (warningEl) warningEl.style.display = 'none'; }
             }
 
-            // 4. 바다 충돌 (기체 고도 0m 기준)
             if (actualAlt <= 0) {
-                this.createExplosion(new THREE.Vector3(this.camera.position.x, 0, this.camera.position.z - 350));
+                this.createExplosion(this.player.planeGroup.position);
                 this.isGameStarted = false; alert("CRASH: 바다 충돌!"); location.reload();
             }
 
@@ -367,37 +367,15 @@ class Game {
                 const u = this.activeEnemies[i];
                 if (u.active) {
                     u.update(this.camera.position);
-                    if (u.mesh.position.z > this.camera.position.z + 1000) { u.active = false; this.activeEnemies.splice(i, 1); }
+                    if (u.mesh.position.distanceTo(this.camera.position) > 10000) { u.active = false; this.activeEnemies.splice(i, 1); }
                 } else { this.activeEnemies.splice(i, 1); }
             }
 
-            // 5. 건사이트 조작 (상하 가동 범위 최적화: 화면 절반 이하로 내려가지 않도록 제한)
-            const maxSightX = 170; 
-            const maxSightY_Up = 380; // 위로는 넓게
-            const maxSightY_Down = 0; // 화면 수직 절반(중앙 0)까지만 내려옴
-            
-            const clampedSightX = THREE.MathUtils.clamp(axes.x * 250, -maxSightX, maxSightX);
-            const clampedSightY = THREE.MathUtils.clamp(axes.y * 450, -maxSightY_Up, maxSightY_Down);
-            
-            const hudEl = document.getElementById('central-hud');
-            if (hudEl) {
-                hudEl.style.transform = `translate(calc(-50% + ${clampedSightX}px), calc(-50% + ${clampedSightY}px)) ${this.lockTarget ? 'scale(1.1)' : 'scale(1)'}`;
-                hudEl.style.backgroundColor = this.lockTarget ? 'rgba(255, 0, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)';
-            }
-
-            // [핵심] 건사이트가 가리키는 월드 상의 목표 지점 계산 (약 3000유닛 앞)
-            const targetWorldPoint = new THREE.Vector3(
-                this.camera.position.x + (clampedSightX * 6),
-                this.camera.position.y - (clampedSightY * 3.5),
-                this.camera.position.z - 3000
-            );
-
+            // [변경] 조준 및 사격 (카메라 정면 발사)
             if (isFiring && now - this.lastFireTime > this.player.fireRate) {
-                const shots = this.player.fire();
-                shots.forEach(s => {
-                    // 총구 위치(s.position)에서 조준 포인트(targetWorldPoint)를 향하는 벡터 계산
-                    const dir = new THREE.Vector3().subVectors(targetWorldPoint, s.position).normalize();
-                    this.playerBullets.push(new Bullet(this.scene, s.position, dir, { speed: 2500 }));
+                const fireDir = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
+                this.player.fire().forEach(s => {
+                    this.playerBullets.push(new Bullet(this.scene, s.position, fireDir, { speed: 4000 }));
                 });
                 if (this.sounds.gun && !this.sounds.gun.isPlaying) this.sounds.gun.play();
                 this.lastFireTime = now;
@@ -415,8 +393,9 @@ class Game {
             if (!u.active) return;
             const relPos = _vTemp.copy(u.mesh.position).applyMatrix4(_mRadar.copy(this.camera.matrixWorld).invert());
             if (relPos.z < 0 && relPos.z > -5000) {
-                const screenDist = Math.sqrt(relPos.x * relPos.x + relPos.y * relPos.y);
-                if (screenDist < 150) {
+                const screenPos = u.mesh.position.clone().project(this.camera);
+                const offset = Math.hypot(screenPos.x, screenPos.y);
+                if (offset < 0.3) {
                     const dist = u.mesh.position.distanceTo(this.camera.position);
                     if (dist < closestDist) { closestDist = dist; this.lockTarget = u; }
                 }
@@ -425,25 +404,12 @@ class Game {
         this.activeEnemies.forEach(u => { u.mesh.scale.setScalar(u === this.lockTarget ? 2.0 : 1.0); });
     }
 
-    handleFire() {
-        if (this.lockTarget) { this.createExplosion(this.lockTarget.mesh.position); this.lockTarget.active = false; }
-        else { this.player.fire().forEach(s => this.playerBullets.push(new Bullet(this.scene, s.position, s.direction, { speed: 1200 }))); }
-        if (this.sounds.gun && !this.sounds.gun.isPlaying) this.sounds.gun.play();
-    }
-
-    spawnRailEnemy() {
-        const spawnZ = this.camera.position.z - (5000 + Math.random() * 3000);
-        const spawnX = this.camera.position.x + (Math.random() - 0.5) * 2000;
-        const spawnY = this.camera.position.y + (Math.random() - 0.5) * 1000;
-        this.spawnFromPool(spawnX, spawnY, spawnZ, 1);
-    }
-
     updateBullets(deltaTime) {
         for (let i = this.playerBullets.length - 1; i >= 0; i--) {
             const b = this.playerBullets[i]; b.update(deltaTime);
             if (b.active) {
                 for (const u of this.activeEnemies) {
-                    if (u.active && b.mesh.position.distanceTo(u.mesh.position) < 120) { this.createExplosion(u.mesh.position); u.active = false; b.destroy(); break; }
+                    if (u.active && b.mesh.position.distanceTo(u.mesh.position) < 300) { this.createExplosion(u.mesh.position); u.active = false; b.destroy(); break; }
                 }
             }
             if (!b.active) this.playerBullets.splice(i, 1);
@@ -470,9 +436,9 @@ class Game {
 
     updateHUD() {
         if (!this.player) return;
-        const actualAlt = Math.floor(this.camera.position.y - 120);
+        const actualAlt = Math.floor(this.camera.position.y);
         document.getElementById('val-hp').innerText = Math.floor(this.player.hp);
-        document.getElementById('alt-val').innerText = Math.max(0, actualAlt) + "m (Z: " + Math.floor(this.camera.position.z) + ")";
+        document.getElementById('alt-val').innerText = Math.max(0, actualAlt) + "m";
         document.getElementById('speed-val').innerText = Math.floor(this.player.currentSpeed) + "km/h";
         document.getElementById('val-units').innerText = this.activeEnemies.length;
         document.getElementById('alt-val-central').innerText = Math.max(0, actualAlt);

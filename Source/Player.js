@@ -68,46 +68,20 @@ export class Player extends BaseAircraft {
 
         this.handleSpeed(input, deltaTime);
 
-        const axes = input.getAxis(); // x: 좌우, y: 상하 (-1 ~ 1)
-        // [골든 세팅] 묵직한 조작감을 위해 0.01 보간 사용
-        const lerpFactor = 0.01;
+        const axes = input.getAxis();
+        const lerpFactor = 0.05; 
 
-        // --- [상하 조작: 고정형 레일 방식] ---
-        // 기체는 화면 하단(-120)을 기준으로 상하 범위를 아주 좁게 제한하여 
-        // 카메라 시야와 항상 일정한 간격을 유지하게 합니다.
-        const planeTargetY = -120 + (axes.y * 30); // 상하 가동폭 최소화 (±30)
-        this.planeGroup.position.y += (planeTargetY - this.planeGroup.position.y) * lerpFactor;
-
-        // 상하 카메라는 건사이트가 기체 코앞에 붙어있는 느낌을 주도록 
-        // 기체 위치보다 약간 높은 곳을 고정적으로 바라봅니다.
-        const lookAtY = planeTargetY + 60; // 기체보다 항상 60유닛 위를 주시 (겹침 방지)
-
-        // --- [좌우 조작: 다이내믹 방식 유지] ---
-        const planeTargetX = axes.x * 120; 
-        this.planeGroup.position.x += (planeTargetX - this.planeGroup.position.x) * lerpFactor;
-        
-        const lookAtX = axes.x * 250; 
-        // ------------------------------------------
-
-        // 최종 카메라 주시 포인트 적용 (월드 좌표 기준 오프셋)
-        const targetLookAt = new THREE.Vector3(
-            this.camera.position.x + lookAtX, 
-            this.camera.position.y + lookAtY, 
-            this.camera.position.z - 1000
-        );
-        this.camera.lookAt(targetLookAt);
-
-        // [회전 및 기울기 설정]
-        const maxRollRad = Math.PI / 3;    // 좌우 기울기 60도
-        const maxPitchRad = Math.PI / 18;  // 상하 각도는 10도 내외로 극소화 (시야 확보)
-
+        // [Toy Model: 시각적 기울기 애니메이션]
+        // 제공된 시뮬레이션 소스의 기울기 가중치를 적용합니다.
+        const maxRollRad = Math.PI / 3; // 60도
         this.currentRoll = THREE.MathUtils.lerp(this.currentRoll, -axes.x * maxRollRad, lerpFactor);
-        this.currentPitch = THREE.MathUtils.lerp(this.currentPitch, axes.y * maxPitchRad, lerpFactor);
-        this.currentYaw = THREE.MathUtils.lerp(this.currentYaw, -axes.x * 0.1, lerpFactor);
+        this.currentPitch = THREE.MathUtils.lerp(this.currentPitch, axes.y * 0.2, lerpFactor);
 
-        this.planeGroup.rotation.set(-this.currentPitch, this.currentYaw, this.currentRoll, 'YXZ');
+        // 기체 그룹 회전 (카메라에 자식으로 붙어있는 상태)
+        this.planeGroup.rotation.z = (this.currentRoll * 2.0); 
+        this.planeGroup.rotation.x = this.currentPitch * 0.5;
 
-        // 회피 기동(Barrel Roll) 애니메이션을 비행기 메쉬에만 적용
+        // 회피 기동(Barrel Roll)
         if (this.evadeRoll > 0) {
             const step = deltaTime * 12;
             this.evadeRoll = Math.max(0, this.evadeRoll - step);
@@ -118,15 +92,8 @@ export class Player extends BaseAircraft {
         }
 
         const propellerSpeed = 0.3 + (this.currentSpeed / 500) * 1.5;
-        // [수정] UI 버튼 뿐만 아니라 키보드 F키 상태도 함께 전달하여 뮤즐 플래시 활성화
         const isFiring = input.isFiringUI || input.isPressed('KeyF');
         super.update(propellerSpeed, isFiring);
-
-        // 시야각 연출 (속도감 체감 강화)
-        const speedFactor = (this.currentSpeed - this.minSpeed) / (this.maxSpeed - this.minSpeed);
-        const targetFOV = 75 + speedFactor * 35; 
-        this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, targetFOV, 0.1);
-        this.camera.updateProjectionMatrix();
     }
 
     handleSpeed(input, deltaTime) {
